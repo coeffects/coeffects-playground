@@ -1,0 +1,9 @@
+source http://nuget.org/api/v2
+
+nuget FAKE
+nuget Suave
+nuget FunScript
+nuget FunScript.TypeScript.Binding.lib
+nuget FSharp.Compiler.Service
+
+github matthid/Yaaf.FSharp.Scripting src/source/Yaaf.FSharp.Scripting/YaafFSharpScripting.fs
