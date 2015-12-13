@@ -29,12 +29,52 @@ type Pattern =
   
 /// Represents an expression of the coeffect language
 [<RequireQualifiedAccess>]
-type Expr = 
-  | Fun of list<Pattern> * Expr
-  | Let of Pattern * Expr * Expr
-  | App of Expr * Expr
+type Expr<'T> = 
+  | Fun of Pattern * Typed<'T>
+  | Let of Pattern * Typed<'T> * Typed<'T>
+  | App of Typed<'T> * Typed<'T>
   | Var of string
   | QVar of string
   | Integer of int
-  | Binary of string * Expr * Expr
+  | Binary of string * Typed<'T> * Typed<'T>
+
+/// Represents an expression with a type annotation of generic type
+and Typed<'T> =
+  | Typed of 'T * Expr<'T>
+
+type Coeffect = 
+  | Variable of string
+  | Use 
+  | Ignore
+  | Merge of Coeffect * Coeffect
+  | Split of Coeffect * Coeffect
+  | Seq of Coeffect * Coeffect
+  | ImplicitParam of string * Type
+
+/// Represents the type of mini-ML expressions
+and Type = 
+  | Variable of string
+  | Primitive of string
+  | Func of Coeffect * Type * Type
+
+
+// ------------------------------------------------------------------------------------------------
+// Helper fucntions for working with the AST
+// ------------------------------------------------------------------------------------------------
+
+/// Provides helper functions for working with `Expr<'T>` and `Typed<'T>` values
+module Expr = 
+
+  /// Transform the type annotations in the specified expression using the provided function
+  let rec mapType f (Typed.Typed(t, e)) =
+    let e = 
+      match e with
+      | Expr.App(e1, e2) -> Expr.App(mapType f e1, mapType f e2)
+      | Expr.Binary(op, e1, e2) -> Expr.Binary(op, mapType f e1, mapType f e2)
+      | Expr.Fun(pats, e) -> Expr.Fun(pats, mapType f e)
+      | Expr.Integer(n) -> Expr.Integer(n)
+      | Expr.Let(pat, e1, e2) -> Expr.Let(pat, mapType f e1, mapType f e2)
+      | Expr.QVar(v) -> Expr.QVar(v)
+      | Expr.Var(v) -> Expr.Var(v)
+    Typed.Typed(f t, e)
 

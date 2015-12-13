@@ -14,17 +14,15 @@ let pattern =
   choose (function Token.Ident id -> Some(Pattern.Var id) | _ -> None) <|>
   choose (function Token.QIdent id -> Some(Pattern.QVar id) | _ -> None)
   
-let patterns = oneOrMore pattern
-  
 // Parsing of simple expressions that correspond to tokens
 let token tok = pred ((=) tok)
 
 let var = 
-  choose (function Token.Ident id -> Some(Expr.Var id) | _ -> None)
+  choose (function Token.Ident id -> Some(Typed.Typed((), Expr.Var id)) | _ -> None)
 let qvar = 
-  choose (function Token.QIdent id -> Some(Expr.QVar id) | _ -> None)
+  choose (function Token.QIdent id -> Some(Typed.Typed((), Expr.QVar id)) | _ -> None)
 let integer = 
-  choose (function Token.Integer n -> Some(Expr.Integer n) | _ -> None)
+  choose (function Token.Integer n -> Some(Typed.Typed((), Expr.Integer n)) | _ -> None)
 let op = 
   choose (function Token.Operator s -> Some s | _ -> None)
 
@@ -39,7 +37,7 @@ let precedence = function
 
 /// Represnts a sequence of expressions separated by binary operators
 /// (e.g. 'f x + 1 * 2 / g y' has 4 expressions separated by 3 operators)
-type OpExpr = OpExpr of Expr * option<string * OpExpr>
+type OpExpr = OpExpr of Typed<unit> * option<string * OpExpr>
 
 /// Turn 'OpExpr' into a parsed 'Expr' using the "Precedence climbing method"
 /// (see https://en.wikipedia.org/wiki/Operator-precedence_parser)
@@ -51,7 +49,7 @@ let rec buildExpr minPrec (OpExpr(app, next)) =
         let nextMinPrec = 
           if assoc = Left then prec + 1 else prec
         let rhs, next = buildExpr nextMinPrec next
-        let result = Expr.Binary(op, result, rhs)               
+        let result = Typed.Typed((), Expr.Binary(op, result, rhs))
         loop result next
     | _ -> result, next      
   loop app next
@@ -59,7 +57,7 @@ let rec buildExpr minPrec (OpExpr(app, next)) =
 /// Parse '<term> <term> .. <term>' representing function application
 let rec apps () = 
   oneOrMore (term ()) |> map (fun t -> 
-      List.tail t |> List.fold (fun st v -> Expr.App(st, v)) (List.head t))
+      List.tail t |> List.fold (fun st v -> Typed.Typed((), Expr.App(st, v))) (List.head t))
 
 /// Parse '<apps> <op> <apps> .. <apps>' representing expression with operators
 and opExpr () = delay (fun () ->
@@ -86,16 +84,16 @@ and binding () = delay (fun () ->
     token Token.In <*>
     expr () )
   |> map (fun (((((_, pat), _), assign), _), body) ->
-    Expr.Let(pat, assign, body)) )
+    Typed.Typed((), Expr.Let(pat, assign, body))) )
 
 /// Parse a function of the form 'fun <pat> .. <pat> -> <expr>'
 and func () = delay (fun () ->
   ( token Token.Fun <*>
-    patterns <*>
+    pattern <*>
     token Token.Arrow <*>
     expr () )
-  |> map (fun (((_, pats), _), body) -> 
-    Expr.Fun(pats, body) ))
+  |> map (fun (((_, pat), _), body) -> 
+    Typed.Typed((), Expr.Fun(pat, body)) ))
 
 /// Parse a term (this handles most of the usual expressions)
 and term () = delay (fun () ->

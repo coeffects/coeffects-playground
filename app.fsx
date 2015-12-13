@@ -16,6 +16,8 @@ open Suave.Http.Applicatives
 #load "ast.fs"
 #load "lexer.fs"
 #load "parser.fs"
+#load "solver.fs"
+#load "typechecker.fs"
 
 // ------------------------------------------------------------------------------------------------
 // Translating F# code to JavaScript using FunScript
@@ -62,31 +64,56 @@ let ?y = 3 in f 0""".Trim()
     sb.push(body)
     sb.push("</span>")
 
-  let printPat sb pat = 
-    match pat with
-    | Pattern.Var(s) -> appendCls "i" s sb
-    | Pattern.QVar(s) -> appendCls "i" ("?" + s) sb
+  let appendTitleCls title cls body (sb:string[]) =
+    if title = "" then appendCls cls body sb else
+    sb.push("<span title='")
+    sb.push(title)
+    sb.push("' class='")
+    sb.push(cls)
+    sb.push("'>")
+    sb.push(body)
+    sb.push("</span>")
 
-  let rec printExpr sb expr =
+  let printPat title sb pat = 
+    match pat with
+    | Pattern.Var(s) -> appendTitleCls title "i" s sb
+    | Pattern.QVar(s) -> appendTitleCls title "i" ("?" + s) sb
+
+  let rec formatCoeff coeff =
+    match coeff with
+    | Coeffect.Variable s -> s
+    | Coeffect.ImplicitParam(n, t) -> "?" + n + ":" + (formatTyp t)
+    | Coeffect.Merge(c1, c2) -> formatCoeff c1 + " ^ " + formatCoeff c2
+    | Coeffect.Split(c1, c2) -> formatCoeff c1 + " + " + formatCoeff c2
+    | Coeffect.Seq(c1, c2) -> formatCoeff c1 + " * " + formatCoeff c2
+    | Coeffect.Ignore -> "ign"
+    | Coeffect.Use -> "use"
+
+  and formatTyp typ = 
+    match typ with 
+    | Type.Variable s -> "&quot;" + s
+    | Type.Func(c, t1, t2) -> "(" + formatTyp t1 + " -{ " + formatCoeff c + " }&gt; " + formatTyp t2 + ")"
+    | Type.Primitive s -> s
+
+  let rec printExpr sb (Typed.Typed((coeff, typ), expr)) =
     match expr with
-    | Expr.Var(s) -> appendCls "i" s sb
+    | Expr.Var(s) -> appendTitleCls (formatTyp typ) "i" s sb
     | Expr.QVar(s) -> appendCls "i" ("?" + s) sb
     | Expr.Integer(n) -> appendCls "n" (string n) sb
-    | Expr.Fun(pats, body) -> 
+    | Expr.Fun(pat, body) -> 
         append "(" sb
         appendCls "k" "fun" sb    
-        for pat in pats do
-          append " " sb
-          printPat sb pat
+        append " " sb
+        printPat "" sb pat
         append " " sb
         appendCls "k" "->" sb
         append " " sb
         printExpr sb body
         append ")" sb
-    | Expr.Let(pat, expr, body) -> 
+    | Expr.Let(pat, (Typed.Typed((coeff, vtyp), _) as expr), body) -> 
         appendCls "k" "let" sb
         append " " sb
-        printPat sb pat
+        printPat (formatTyp vtyp) sb pat
         append " " sb
         appendCls "op" "=" sb
         append " " sb
@@ -104,8 +131,68 @@ let ?y = 3 in f 0""".Trim()
         append " " sb
         appendCls "op" op sb
         append " " sb
-        printExpr sb e1
+        printExpr sb e2
     
+  
+  module Tex = 
+    let inl s (arr:string[]) = 
+      arr.push(s); arr
+    let kvd s (arr:string[]) = 
+      arr |> inl ("{\\color{kvd}\\text{" + s + "}}")
+    let num n (arr:string[]) = 
+      arr |> inl ("{\\color{num} " + string n + "}")
+    let pattern pat strs = 
+      match pat with 
+      | Pattern.Var v -> strs |> inl v
+      | Pattern.QVar v -> strs |> inl ("?" + v)
+
+    let limit n f g (arr:string[]) =
+      let l1 = arr.Length
+      let _ = f arr
+      if arr.Length <= l1 + n then arr
+      else 
+        let _ = arr.splice(float l1, float (arr.Length - l1)) 
+        g arr
+
+    let rec expr (Typed.Typed((c, t),e)) (ar:string[]) = 
+      match e with
+      | Expr.Var(v) -> ar |> inl v
+      | Expr.QVar(v) -> ar |> inl ("?" + v)
+      | Expr.Integer(n) -> ar |> num n
+      | Expr.App(e1, e2) ->
+          ar |> expr e1 |> inl "~" |> expr e2
+      | Expr.Let(pat, arg, body) ->
+          ar |> kvd "let" |> inl "~" |> pattern pat |> inl "~=~" 
+             |> limit 8 (expr arg) (inl "(\\ldots)") |> inl "~" |> kvd "in" |> inl "~" 
+             |> limit 8 (expr body) (inl "(\\ldots)")
+      | _ -> 
+          ar |> inl "???"
+
+    let rec flattenCoeffects c = 
+      match c with
+      | Coeffect.Ignore | Coeffect.Use -> []
+      | Coeffect.ImplicitParam(s, _) -> ["?" + s]
+      | Coeffect.Merge(c1, c2) | Coeffect.Split(c1, c2) | Coeffect.Seq(c1, c2) -> 
+          flattenCoeffects c1 @ flattenCoeffects c2
+      | Coeffect.Variable _ -> failwith "Unresolved coeffect variable"
+
+    let coeff c (ar:string[]) =
+      ar |> inl (String.concat "," (flattenCoeffects c))
+
+    let rec typ t (ar:string[]) =
+      match t with 
+      | Type.Func(c, t1, t2) -> ar |> typ t1 |> inl "\\xrightarrow{" |> coeff c |> inl "}" |> typ t2
+      | Type.Primitive(s) -> ar |> inl ("\\text{" + s + "}")
+      | Type.Variable(s) -> ar |> inl ("`" + s)
+          
+
+    let typed (Typed.Typed((c, t), e) as te) (ar:string[]) =
+      ar |> inl "\\,{\\small @}\\," |> coeff c |> inl "\\vdash " |> expr te |> inl ":" |> typ t
+
+    let judgement (Typed.Typed((c, t), e) as te) (ar:string[]) = 
+      match e with
+      | Expr.Let(pat, arg, body) ->
+          ar |> inl "\\dfrac{" |> typed arg |> inl "\\quad " |> typed body |> inl "}{" |> typed te |> inl "}"
 
 
 (*  let source3 = "1+2+3+4^2^2*5"
@@ -118,10 +205,14 @@ let ?y = 3 in f 0""".Trim()
 *)
   let filter f xs = List.foldBack (fun x xs -> if f x then x::xs else xs) xs [] 
    
+  [<JSEmitInline("MathJax.Hub.Queue(['Typeset',MathJax.Hub,{0}]);")>]
+  let typeSetElement (el:string) : unit = failwith "!"
+
   let main () =
     let btn = Globals.document.getElementById("btn") :?> HTMLButtonElement
     let input = Globals.document.getElementById("input") :?> HTMLTextAreaElement
     let output = Globals.document.getElementById("output") :?> HTMLPreElement
+    let judgement = Globals.document.getElementById("judgement") :?> HTMLPreElement
     input.value <- source()
     btn.addEventListener_click(fun e ->
       let (Parsec.Parser lex) = Lexer.lexer
@@ -130,9 +221,19 @@ let ?y = 3 in f 0""".Trim()
       let (Parsec.Parser pars) = Parser.expr ()
       let expr = pars tokens |> Option.get |> snd
       let arr : string[] = [| |]
-      printExpr arr expr
-      Globals.alert(arr.join(""))
+      let typed = TypeChecker.typeCheck expr
+      printExpr arr typed
+      // Globals.alert(arr.join(""))
       output.innerHTML <- arr.join("")
+
+      // $('.mtable').on("mouseenter", function() { $(this).css({backgroundColor: '#c0ffc0'}) }).on("mouseleave", function() { $(this).css({backgroundColor: '#ffffff'}) });
+
+      let arr2 : string[] = [| |]
+      let arr2' = Tex.judgement typed arr2
+      judgement.innerHTML <- "\\[" + arr2.join("") + "\\]"
+      Globals.alert( arr2.join("") )
+      typeSetElement "judgement"
+
       null
     )
 

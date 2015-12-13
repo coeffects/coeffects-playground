@@ -7,7 +7,11 @@
   <script src="//code.jquery.com/jquery-2.1.4.min.js"></script>
   <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha256-KXn5puMvxCw+dAYznun+drMdG1IFl3agK0p/pqT9KAo= sha512-2e8qq0ETcfWRI4HJBzQiA3UoyFk6tbNyG+qSaIBZLyW9Xf3sWZHN/lxe9fTh1U45DpPf07yj94KsUHHWe4Yk1A==" crossorigin="anonymous"></script>
   <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet" integrity="sha256-7s5uDGW3AHqw6xtJmNNtr+OBRJUlgkNJEo78P4b0yRw= sha512-nNo+yCHEyn0smMxSswnf/OnX6/KwJuZTlNZBjauKhTK0c+zT+q5JOCx0UFhXQ6rJR9jg6Es8gPuD2uZcYDLqSw==" crossorigin="anonymous">
-  <link href='https://fonts.googleapis.com/css?family=Inconsolata' rel='stylesheet' type='text/css'>
+  <link href='//fonts.googleapis.com/css?family=Inconsolata' rel='stylesheet' type='text/css'>
+  <script src='//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({ TeX: { extensions: ["color.js"] }});
+  </script>  
   <script src="/script.js"></script>
   <style>
     .k { color: #0000a0; }
@@ -41,7 +45,24 @@
       <div class="col-md-6">
 
         <pre id="output">(Output goes here...)</pre>
+        <p id="judgement">
+        \[ 
+        
+        \definecolor{coeff}{RGB}{45,177,93}
+        \definecolor{typ}{RGB}{177,93,43}
+        \definecolor{expr}{RGB}{0,0,0}
+        \definecolor{kvd}{RGB}{0,45,177}
+        \definecolor{num}{RGB}{177,177,43}
 
+        \dfrac
+          {\begin{array}{c}`x \xrightarrow{c} `y\end{array} \quad \begin{array}{c}\Gamma \,{\small @}\, {\color{coeff} r} \vdash {\color{expr} e} : {\color{typ}\tau}\end{array}}
+          {\begin{array}{c}\color{spin} {\color{kvd} \text{fun}}~x \rightarrow ?z\end{array}}
+                
+         \]</p>
+
+         $('.mtable').css({backgroundColor: '#c0ffc0'});
+        
+         <button onclick="document.getElementById('judgement').innerHTML='\\[ \\dfrac{x}{y} \\]'; MathJax.Hub.Queue(['Typeset',MathJax.Hub,'judgement']);">HYo!</button>
       </div>
     </div>
   </div>

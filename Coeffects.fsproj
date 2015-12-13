@@ -65,6 +65,8 @@
     <Compile Include="ast.fs" />
     <Compile Include="lexer.fs" />
     <Compile Include="parser.fs" />
+    <Compile Include="typechecker.fs" />
+    <Compile Include="solver.fs" />
     <Compile Include="app.fsx" />
   </ItemGroup>
   <ItemGroup>
