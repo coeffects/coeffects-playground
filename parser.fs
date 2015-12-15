@@ -95,11 +95,18 @@ and func () = delay (fun () ->
   |> map (fun (((_, pat), _), body) -> 
     Typed.Typed((), Expr.Fun(pat, body)) ))
 
+and prev () = delay (fun () ->
+  ( token Token.Prev <*>
+    term () )
+  |> map (fun (_, body) ->
+    Typed.Typed((), Expr.Prev(body)) ))
+
 /// Parse a term (this handles most of the usual expressions)
 and term () = delay (fun () ->
   func () <|>
   integer <|>
   var <|> 
   qvar <|>
+  prev () <|>
   binding () <|>
   bracketed () )

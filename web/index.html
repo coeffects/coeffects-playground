@@ -20,6 +20,16 @@
   </style>
 </head>
 <body>
+  <div style="display:none">
+    \[ 
+      \definecolor{coeff}{RGB}{45,177,93}
+      \definecolor{typ}{RGB}{177,93,43}
+      \definecolor{expr}{RGB}{0,0,0}
+      \definecolor{kvd}{RGB}{0,45,177}
+      \definecolor{num}{RGB}{43,177,93}
+    \]
+  </div>
+
   <div class="container">
     <div class="header clearfix">
       <nav>
@@ -30,41 +40,43 @@
       </nav>
       <h3 class="text-muted">Coeffects</h3>
     </div>
+  </div>
 
-    <div class="jumbotron">
-      <h1>Coeffects</h1>
-      <p class="lead">Experience coeffects.</p>
-    </div>
-
+  <div class="container" id="impl1">
     <div class="row">
       <div class="col-md-6">
-
-        <textarea class="form-control" id="input" style="font-family:inconsolata; height:300px"></textarea>
-        <button class="btn btn-success" id="btn">Do stuff</button>
+        <textarea class="form-control" id="impl1-input" style="font-family:inconsolata; height:150px"></textarea>
+        <button class="btn btn-success" id="impl1-btn">Do stuff</button>
       </div>
       <div class="col-md-6">
-
-        <pre id="output">(Output goes here...)</pre>
-        <p id="judgement">
-        \[ 
-        
-        \definecolor{coeff}{RGB}{45,177,93}
-        \definecolor{typ}{RGB}{177,93,43}
-        \definecolor{expr}{RGB}{0,0,0}
-        \definecolor{kvd}{RGB}{0,45,177}
-        \definecolor{num}{RGB}{177,177,43}
-
-        \dfrac
-          {\begin{array}{c}`x \xrightarrow{c} `y\end{array} \quad \begin{array}{c}\Gamma \,{\small @}\, {\color{coeff} r} \vdash {\color{expr} e} : {\color{typ}\tau}\end{array}}
-          {\begin{array}{c}\color{spin} {\color{kvd} \text{fun}}~x \rightarrow ?z\end{array}}
-                
-         \]</p>
-
-         $('.mtable').css({backgroundColor: '#c0ffc0'});
-        
-         <button onclick="document.getElementById('judgement').innerHTML='\\[ \\dfrac{x}{y} \\]'; MathJax.Hub.Queue(['Typeset',MathJax.Hub,'judgement']);">HYo!</button>
+        <pre id="impl1-output">(Output goes here...)</pre>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-12">
+        <p id="impl1-judgement"></p>
+        <p id="impl1-judgement-temp" style="display:none"></p>
       </div>
     </div>
   </div>
+
+  <div class="container" id="df1">
+    <div class="row">
+      <div class="col-md-6">
+        <textarea class="form-control" id="df1-input" style="font-family:inconsolata; height:150px"></textarea>
+        <button class="btn btn-success" id="df1-btn">Do stuff</button>
+      </div>
+      <div class="col-md-6">
+        <pre id="df1-output">(Output goes here...)</pre>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-12">
+        <p id="df1-judgement"></p>
+        <p id="df1-judgement-temp" style="display:none"></p>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

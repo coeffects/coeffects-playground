@@ -9,7 +9,7 @@ open Coeffects.Parsec
 open Coeffects.Ast
 
 // Lookup tables for supported keywords and operators
-let keywords = Map.ofSeq [ "fun", Token.Fun; "let", Token.Let; "in", Token.In ]
+let keywords = Map.ofSeq [ "fun", Token.Fun; "let", Token.Let; "in", Token.In; "prev", Token.Prev ]
 let operators = set [ '+'; '-'; '*'; '/'; '^' ]
 
 // Parsing basic things like letters and numbers

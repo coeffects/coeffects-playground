@@ -2,6 +2,7 @@
 #r "packages/FunScript/lib/net40/FunScript.dll"
 #r "packages/FunScript/lib/net40/FunScript.Interop.dll"
 #r "packages/FunScript.TypeScript.Binding.lib/lib/net40/FunScript.TypeScript.Binding.lib.dll"
+#r "packages/FunScript.TypeScript.Binding.jquery/lib/net40/FunScript.TypeScript.Binding.jquery.dll"
 open System.IO
 open FunScript
 open FunScript.Compiler
@@ -18,13 +19,22 @@ open Suave.Http.Applicatives
 #load "parser.fs"
 #load "solver.fs"
 #load "typechecker.fs"
+#load "pretty.fs"
 
 // ------------------------------------------------------------------------------------------------
 // Translating F# code to JavaScript using FunScript
 // ------------------------------------------------------------------------------------------------
 
+open FunScript.TypeScript
+
 [<JSEmitInline("{0}.join('')")>]
 let newString(c:char[]) : string = failwith "!"
+
+[<JSEmitInline("$(this)")>]
+let jthis() : JQuery = failwith "!"
+
+[<JSEmitInline("$({0})")>]
+let jq s : JQuery = failwith "!"
 
 let replacer = 
   ExpressionReplacer.createUnsafe 
@@ -38,205 +48,118 @@ let translate q = Compiler.Compile(q, fun l -> replacer :: l)
 
 open Coeffects
 open Coeffects.Ast
-open FunScript.TypeScript
+open Coeffects.Pretty
 open System.Text
 
 [<ReflectedDefinition>]
 module Client = 
-  let source () = """
+  let source prefix = 
+    if prefix = "impl1" then 
+      """
 let f = 
   let ?x = 1 in
   (fun a -> ?x + ?y) in
 let ?x = 2 in
-let ?y = 3 in f 0""".Trim()
-
-  type 'T``[]`` with
-    [<JSEmitInline("{0}.push({1})")>]
-    member x.push(v:'T) : unit = failwith "!"
-
-  let append body (sb:string[]) = 
-    sb.push(body)
-
-  let appendCls cls body (sb:string[]) = 
-    sb.push("<span class='")
-    sb.push(cls)
-    sb.push("'>")
-    sb.push(body)
-    sb.push("</span>")
-
-  let appendTitleCls title cls body (sb:string[]) =
-    if title = "" then appendCls cls body sb else
-    sb.push("<span title='")
-    sb.push(title)
-    sb.push("' class='")
-    sb.push(cls)
-    sb.push("'>")
-    sb.push(body)
-    sb.push("</span>")
-
-  let printPat title sb pat = 
-    match pat with
-    | Pattern.Var(s) -> appendTitleCls title "i" s sb
-    | Pattern.QVar(s) -> appendTitleCls title "i" ("?" + s) sb
-
-  let rec formatCoeff coeff =
-    match coeff with
-    | Coeffect.Variable s -> s
-    | Coeffect.ImplicitParam(n, t) -> "?" + n + ":" + (formatTyp t)
-    | Coeffect.Merge(c1, c2) -> formatCoeff c1 + " ^ " + formatCoeff c2
-    | Coeffect.Split(c1, c2) -> formatCoeff c1 + " + " + formatCoeff c2
-    | Coeffect.Seq(c1, c2) -> formatCoeff c1 + " * " + formatCoeff c2
-    | Coeffect.Ignore -> "ign"
-    | Coeffect.Use -> "use"
-
-  and formatTyp typ = 
-    match typ with 
-    | Type.Variable s -> "&quot;" + s
-    | Type.Func(c, t1, t2) -> "(" + formatTyp t1 + " -{ " + formatCoeff c + " }&gt; " + formatTyp t2 + ")"
-    | Type.Primitive s -> s
-
-  let rec printExpr sb (Typed.Typed((coeff, typ), expr)) =
-    match expr with
-    | Expr.Var(s) -> appendTitleCls (formatTyp typ) "i" s sb
-    | Expr.QVar(s) -> appendCls "i" ("?" + s) sb
-    | Expr.Integer(n) -> appendCls "n" (string n) sb
-    | Expr.Fun(pat, body) -> 
-        append "(" sb
-        appendCls "k" "fun" sb    
-        append " " sb
-        printPat "" sb pat
-        append " " sb
-        appendCls "k" "->" sb
-        append " " sb
-        printExpr sb body
-        append ")" sb
-    | Expr.Let(pat, (Typed.Typed((coeff, vtyp), _) as expr), body) -> 
-        appendCls "k" "let" sb
-        append " " sb
-        printPat (formatTyp vtyp) sb pat
-        append " " sb
-        appendCls "op" "=" sb
-        append " " sb
-        printExpr sb expr
-        append " " sb
-        appendCls "k" "in" sb
-        append "\n" sb
-        printExpr sb body
-    | Expr.App(e1, e2) ->
-        printExpr sb e1
-        append " " sb
-        printExpr sb e2
-    | Expr.Binary(op, e1, e2) -> 
-        printExpr sb e1
-        append " " sb
-        appendCls "op" op sb
-        append " " sb
-        printExpr sb e2
-    
-  
-  module Tex = 
-    let inl s (arr:string[]) = 
-      arr.push(s); arr
-    let kvd s (arr:string[]) = 
-      arr |> inl ("{\\color{kvd}\\text{" + s + "}}")
-    let num n (arr:string[]) = 
-      arr |> inl ("{\\color{num} " + string n + "}")
-    let pattern pat strs = 
-      match pat with 
-      | Pattern.Var v -> strs |> inl v
-      | Pattern.QVar v -> strs |> inl ("?" + v)
-
-    let limit n f g (arr:string[]) =
-      let l1 = arr.Length
-      let _ = f arr
-      if arr.Length <= l1 + n then arr
-      else 
-        let _ = arr.splice(float l1, float (arr.Length - l1)) 
-        g arr
-
-    let rec expr (Typed.Typed((c, t),e)) (ar:string[]) = 
-      match e with
-      | Expr.Var(v) -> ar |> inl v
-      | Expr.QVar(v) -> ar |> inl ("?" + v)
-      | Expr.Integer(n) -> ar |> num n
-      | Expr.App(e1, e2) ->
-          ar |> expr e1 |> inl "~" |> expr e2
-      | Expr.Let(pat, arg, body) ->
-          ar |> kvd "let" |> inl "~" |> pattern pat |> inl "~=~" 
-             |> limit 8 (expr arg) (inl "(\\ldots)") |> inl "~" |> kvd "in" |> inl "~" 
-             |> limit 8 (expr body) (inl "(\\ldots)")
-      | _ -> 
-          ar |> inl "???"
-
-    let rec flattenCoeffects c = 
-      match c with
-      | Coeffect.Ignore | Coeffect.Use -> []
-      | Coeffect.ImplicitParam(s, _) -> ["?" + s]
-      | Coeffect.Merge(c1, c2) | Coeffect.Split(c1, c2) | Coeffect.Seq(c1, c2) -> 
-          flattenCoeffects c1 @ flattenCoeffects c2
-      | Coeffect.Variable _ -> failwith "Unresolved coeffect variable"
-
-    let coeff c (ar:string[]) =
-      ar |> inl (String.concat "," (flattenCoeffects c))
-
-    let rec typ t (ar:string[]) =
-      match t with 
-      | Type.Func(c, t1, t2) -> ar |> typ t1 |> inl "\\xrightarrow{" |> coeff c |> inl "}" |> typ t2
-      | Type.Primitive(s) -> ar |> inl ("\\text{" + s + "}")
-      | Type.Variable(s) -> ar |> inl ("`" + s)
-          
-
-    let typed (Typed.Typed((c, t), e) as te) (ar:string[]) =
-      ar |> inl "\\,{\\small @}\\," |> coeff c |> inl "\\vdash " |> expr te |> inl ":" |> typ t
-
-    let judgement (Typed.Typed((c, t), e) as te) (ar:string[]) = 
-      match e with
-      | Expr.Let(pat, arg, body) ->
-          ar |> inl "\\dfrac{" |> typed arg |> inl "\\quad " |> typed body |> inl "}{" |> typed te |> inl "}"
+let ?z = 3 in f 0""".Trim()
+    else 
+      """
+let h = prev (fun y -> 
+  (fun x -> 1 + prev x) (prev y))
+in h 42  """.Trim()
 
 
-(*  let source3 = "1+2+3+4^2^2*5"
-  let source = source2
-  let (Parsers.Parser p) = Lexer.lexer
-  let tokens = p (List.ofSeq source) |> Option.get |> snd
-  let (Parsers.Parser p2) = expr ()
-  p2 tokens
-  |> Option.get |> snd
-*)
   let filter f xs = List.foldBack (fun x xs -> if f x then x::xs else xs) xs [] 
    
   [<JSEmitInline("MathJax.Hub.Queue(['Typeset',MathJax.Hub,{0}]);")>]
   let typeSetElement (el:string) : unit = failwith "!"
+  
+  [<JSEmitInline("MathJax.Hub.Queue({0});")>]
+  let queueAction(f:unit -> unit) : unit = failwith "!"
 
-  let main () =
-    let btn = Globals.document.getElementById("btn") :?> HTMLButtonElement
-    let input = Globals.document.getElementById("input") :?> HTMLTextAreaElement
-    let output = Globals.document.getElementById("output") :?> HTMLPreElement
-    let judgement = Globals.document.getElementById("judgement") :?> HTMLPreElement
-    input.value <- source()
+  let setup kind prefix = 
+    let btn = Globals.document.getElementById(prefix + "-btn") :?> HTMLButtonElement
+    let input = Globals.document.getElementById(prefix + "-input") :?> HTMLTextAreaElement
+    let output = Globals.document.getElementById(prefix + "-output") :?> HTMLPreElement
+    let judgement = Globals.document.getElementById(prefix + "-judgement") :?> HTMLPreElement
+    let judgementTemp = Globals.document.getElementById(prefix + "-judgement-temp") :?> HTMLPreElement
+
+    input.value <- source prefix
     btn.addEventListener_click(fun e ->
       let (Parsec.Parser lex) = Lexer.lexer
       let tokens = lex (List.ofArray (input.value.ToCharArray())) |> Option.get |> snd
       let tokens = tokens |> filter (function Token.White _ -> false | _ -> true)
       let (Parsec.Parser pars) = Parser.expr ()
       let expr = pars tokens |> Option.get |> snd
-      let arr : string[] = [| |]
-      let typed = TypeChecker.typeCheck expr
-      printExpr arr typed
-      // Globals.alert(arr.join(""))
-      output.innerHTML <- arr.join("")
+      let typed = TypeChecker.typeCheck kind expr
+      output.innerHTML <- Html.print (Html.printExpr kind prefix 0 [] typed)
 
-      // $('.mtable').on("mouseenter", function() { $(this).css({backgroundColor: '#c0ffc0'}) }).on("mouseleave", function() { $(this).css({backgroundColor: '#ffffff'}) });
+      let rec findSubExpression locations (Typed.Typed(_, e) as te) : Typed<Vars * Coeffect * Type> = 
+        match locations, e with
+        | [], _ -> te
+        | 0::t, (Expr.Let(_, e, _) | Expr.App(e, _) | Expr.Binary(_, e, _) | Expr.Fun(_, e) | Expr.Prev(e) )
+        | 1::t, (Expr.Let(_, _, e) | Expr.App(_, e) | Expr.Binary(_, _, e)) ->
+           findSubExpression t e
+        | _ -> failwith "Invalid path"
 
-      let arr2 : string[] = [| |]
-      let arr2' = Tex.judgement typed arr2
-      judgement.innerHTML <- "\\[" + arr2.join("") + "\\]"
-      Globals.alert( arr2.join("") )
-      typeSetElement "judgement"
+      let locations : ref<int list> = ref []
+
+      let rec typeset () =
+        let e = findSubExpression (List.rev locations.Value) typed
+        let arr2 : string[] = [| |]
+        let root = locations.Value |> List.isEmpty
+        let arr2' = MathJax.derivation kind root e arr2
+        judgementTemp.innerHTML <- "\\[" + arr2.join("") + "\\]"
+        typeSetElement (prefix + "-judgement-temp")
+
+        let getNewPath (jo:JQuery) =
+          let index = jq("#" + prefix + " .mtable").index(jo)
+          let length = jq("#" + prefix + " .mtable").length
+          let current = if root then length - 1.0 else length - 2.0
+          if index = current then
+            true, locations.Value
+          elif index > current then
+            false, locations.Value |> List.tail
+          else 
+            false, (int index) :: locations.Value
+
+        let highlight (jo:JQuery) (thisClr:string) (currClr:string) = 
+          let current, path = getNewPath jo
+          let path = List.rev path
+          let id = prefix + "-p-" + (String.concat "-" (List.map string path))
+          let clr = if current then currClr else thisClr
+          jq("#" + id).css("backgroundColor", clr) |> ignore
+          jo.css("backgroundColor", clr) |> ignore
+  
+        queueAction(fun () ->
+          judgement.innerHTML <- judgementTemp.innerHTML
+          judgementTemp.innerHTML <- ""
+          
+          jq("#" + prefix + " .mtable").css("cursor", "pointer") |> ignore
+          let currIndex = jq("#" + prefix + " .mtable").length - (if root then 1.0 else 2.0)
+          jq("#" + prefix + " .mtable").eq(currIndex).css("cursor","default") |> ignore
+
+          jq("#" + prefix + " .mtable")
+            .on("click", fun e o ->
+              jq("#" + prefix + " .p-span").css("backgroundColor", "transparent") |> ignore
+              locations.Value <- snd (getNewPath (jthis()))
+              typeset ()
+              box () )
+            .on("mouseenter", fun e o ->
+              highlight (jthis()) "#c0ffc0" "#ffffc0"
+              box () )
+            .on("mouseleave", fun e o ->
+              highlight (jthis()) "transparent" "transparent"
+              box () )
+          |> ignore )
+
+      typeset ()
 
       null
     )
 
+  let main () =
+    setup CoeffectKind.ImplicitParams "impl1"
+    setup CoeffectKind.PastValues "df1"
 
 let script = 
   translate <@ Client.main() @>
