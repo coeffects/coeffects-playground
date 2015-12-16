@@ -9,11 +9,6 @@ open Coeffects.Parsec
 open Coeffects.Ast
 open Coeffects.Lexer
 
-// Parsing of patterns
-let pattern =
-  choose (function Token.Ident id -> Some(Pattern.Var id) | _ -> None) <|>
-  choose (function Token.QIdent id -> Some(Pattern.QVar id) | _ -> None)
-  
 // Parsing of simple expressions that correspond to tokens
 let token tok = pred ((=) tok)
 
@@ -25,6 +20,30 @@ let integer =
   choose (function Token.Integer n -> Some(Typed.Typed((), Expr.Integer n)) | _ -> None)
 let op = 
   choose (function Token.Operator s -> Some s | _ -> None)
+
+// Parsing of patterns
+let patIdent =
+  ( choose (function Token.Ident id -> Some(Pattern.Var id) | _ -> None) <|>
+    choose (function Token.QIdent id -> Some(Pattern.QVar id) | _ -> None) )
+  |> map (fun p -> TypedPat((), p))
+
+let rec patNested () = 
+  ( token Token.LParen <*>
+    pattern () <*>
+    token Token.RParen )
+  |> map (fun ((_, p), _) -> p)
+
+and patOneOrTuple () = 
+  ( patIdent <*>
+    zeroOrMore (token Token.Comma <*> pattern ()) )
+  |> map (fun (p, ps) -> 
+    match ps with 
+    | [] -> p
+    | ps -> TypedPat((), Pattern.Tuple(p :: (List.map snd ps))) )
+  
+and pattern () = delay (fun () ->
+  patNested () <|> patOneOrTuple ())
+  
 
 // Parsing of function applications and operators
 type Associativity = Left | Right
@@ -66,7 +85,13 @@ and opExpr () = delay (fun () ->
 
 /// Parse the same as 'opExpr' and then turn it into 'Expr' using 'buildExpr'
 and expr () = 
-  opExpr () |> map (buildExpr 1 >> fst)
+  ( opExpr () <*> 
+    zeroOrMore (token Token.Comma <*> opExpr ()) )
+  |> map (fun (e, es) ->
+      let exprs = e::(List.map snd es) |> List.map (buildExpr 1 >> fst)
+      match exprs with 
+      | [e] -> e
+      | es -> Typed((), Expr.Tuple(es)) )
 
 /// Parse an expression wrapped in brackets
 and bracketed () = delay (fun () ->
@@ -78,7 +103,7 @@ and bracketed () = delay (fun () ->
 /// Parse let binding of the form 'let <pat> = <expr> in <expr>'
 and binding () = delay (fun () ->
   ( token Token.Let <*>
-    pattern <*>
+    pattern () <*>
     token Token.Equals <*>
     expr () <*>
     token Token.In <*>
@@ -89,7 +114,7 @@ and binding () = delay (fun () ->
 /// Parse a function of the form 'fun <pat> .. <pat> -> <expr>'
 and func () = delay (fun () ->
   ( token Token.Fun <*>
-    pattern <*>
+    pattern () <*>
     token Token.Arrow <*>
     expr () )
   |> map (fun (((_, pat), _), body) -> 

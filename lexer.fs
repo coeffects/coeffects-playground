@@ -52,6 +52,7 @@ let lexer =
       char ')' Token.RParen 
       char '=' Token.Equals
       string "->" Token.Arrow
+      char ',' Token.Comma
       integer
       operator
       questionIdent

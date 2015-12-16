@@ -57,24 +57,26 @@ let flattenCoeffects kind c =
 ///    +----------+------+
 ///    | Expr     | Prec |
 ///    +----------+------+
-///    | prev     |  50  | 
-///    | @        |  40  |
-///    | ^        |  30  |
-///    | *, /     |  20  |
-///    | +, -     |  10  |
-///    | fun, fun |  00  |
+///    | prev     |  60  | 
+///    | @        |  50  |
+///    | ^        |  40  |
+///    | *, /     |  30  |
+///    | +, -     |  20  |
+///    | <tuple>  |  10  |
+///    | let, fun |  00  |
 ///    +----------+------+
 ///
 let precedence expr = 
   let prec, (lfix, rfix) =
     match expr with
-    | Expr.Var _ | Expr.QVar _ | Expr.Integer _ -> 100, (0, 0)
-    | Expr.Prev _ -> 50, (0, 0)
-    | Expr.App _ -> 40, (0, 1)
-    | Expr.Binary("^", _, _) -> 30, (1, 0)
-    | Expr.Binary("/", _, _) | Expr.Binary("*", _, _) -> 20, (0, 1)
-    | Expr.Binary("+", _, _) | Expr.Binary("-", _, _) -> 10, (0, 1)
-    | Expr.Binary _ -> 10, (0, 1)
+    | Expr.Builtin _ | Expr.Var _ | Expr.QVar _ | Expr.Integer _ -> 100, (0, 0)
+    | Expr.Prev _ -> 60, (0, 0)
+    | Expr.App _ -> 50, (0, 1)
+    | Expr.Binary("^", _, _) -> 40, (1, 0)
+    | Expr.Binary("/", _, _) | Expr.Binary("*", _, _) -> 30, (0, 1)
+    | Expr.Binary("+", _, _) | Expr.Binary("-", _, _) -> 20, (0, 1)
+    | Expr.Binary _ -> 20, (0, 1)
+    | Expr.Tuple _ -> 10, (1, 1)
     | Expr.Fun _ | Expr.Let _ -> 00, (0, 0)
   prec, (prec + lfix, prec + rfix)
 
@@ -96,6 +98,12 @@ module Html =
   let (++) p1 p2 = Append(p1, p2)
   let wrap p = Wrap(p)
   let newline = Newline
+
+  /// Run a printing function inline
+  let inl f = 
+    let arr : string[] = [| |]
+    f arr
+    arr.join("")
 
   /// Run the pretty printer!
   let print p =
@@ -133,13 +141,18 @@ module Html =
     sb.push("</span>"))
 
   /// Build printer for a pattern
-  let printPat title pat = 
+  let rec printPat kind (TypedPat((_, _, t), pat)) = 
+    let title () = inl (printTyp kind t)
     match pat with
-    | Pattern.Var(s) -> span ["title",title; "class","i"] s
-    | Pattern.QVar(s) -> span ["title",title; "class","i"] ("?" + s)
+    | Pattern.Var(s) -> span ["title",title (); "class","i"] s
+    | Pattern.QVar(s) -> span ["title",title (); "class","i"] ("?" + s)
+    | Pattern.Tuple(pats) -> 
+        let body = pats |> List.map (printPat kind) |> List.reduce (fun p1 p2 -> p1 ++ text ", " ++ p2) 
+        text "(" ++ body ++ text ")" 
+
 
   /// Print coeffect annotation to the given array
-  let rec printCoeff kind coeffs (sb:string[]) =
+  and printCoeff kind coeffs (sb:string[]) =
     let mutable first = true
     for n, t in coeffs do
       if first then first <- false
@@ -153,6 +166,14 @@ module Html =
   and printTyp kind typ (sb:string[]) = 
     match typ with 
     | Type.Variable s -> sb.push("&quot;"); sb.push(s)
+    | Type.Tuple(ts) ->
+        sb.push("(")
+        printTyp kind (List.head ts) sb |> ignore
+        for t in List.tail ts do
+          sb.push(" * ")
+          printTyp kind t sb |> ignore
+        sb.push(")")
+        
     | Type.Func(c, t1, t2) -> 
         sb.push("(")
         printTyp kind t1 sb
@@ -170,12 +191,6 @@ module Html =
         sb.push(")")
     | Type.Primitive s -> sb.push(s)
 
-  /// Run a printing function inline
-  let inl f = 
-    let arr : string[] = [| |]
-    f arr
-    arr.join("")
-
   let withId prefix path p = 
     let id = "-p-" + String.concat "-" (List.rev (List.map string path))
     text ("<span class='p-span' id='" + prefix + id + "'>") ++ p ++ text "</span>"
@@ -192,27 +207,34 @@ module Html =
     // Generate the body and then call wrapping functions
     ( match expr with
       | Expr.Var(s) -> span ["title", inl (printTyp kind typ); "class","i"] s 
+      | Expr.Builtin(s) -> span ["class","op"] s 
       | Expr.QVar(s) -> span ["title", inl (printTyp kind typ); "class","i"] ("?" + s)
       | Expr.Integer(n) -> span ["class","n"] (string n)
       | Expr.Prev(e) -> span ["class","k"] "prev" ++ text " " ++ printExpr kind prefix thisPrec (0::path) e
       | Expr.Fun(pat, body) -> 
           let tin = match typ with Type.Func(_, tin, _) -> tin | _ -> failwith "Expected function type"
           span ["class","k"] "fun" ++ text " " ++ 
-            printPat  (inl (printTyp kind tin)) pat ++ text " " ++
+            printPat kind pat ++ text " " ++
             span ["class","k"] "-&gt;" ++ text " " ++
             wrap (printExpr kind prefix thisPrec (0::path) body)
 
       | Expr.Let(pat, (Typed.Typed((_, coeff, vtyp), _) as arg), body) -> 
-          span ["class","k"] "let" ++ text " " ++ printPat (inl (printTyp kind vtyp)) pat ++ text " " ++
+          span ["class","k"] "let" ++ text " " ++ printPat kind pat ++ text " " ++
             span ["class","op"] "=" ++ text " " ++ wrap (printExpr kind prefix thisPrec (0::path) arg) ++ text " " ++
             span ["class", "k"] "in" ++ newline ++ printExpr kind prefix thisPrec (1::path) body
 
       | Expr.App(e1, e2) ->
           printExpr kind prefix lPrec (0::path) e1 ++ text " " ++ 
             printExpr kind prefix rPrec (1::path) e2
+
       | Expr.Binary(op, e1, e2) -> 
           printExpr kind prefix lPrec (0::path) e1 ++ text " " ++ span ["class","op"] op ++ 
-            text " " ++ printExpr kind prefix rPrec (1::path) e2)
+            text " " ++ printExpr kind prefix rPrec (1::path) e2
+
+      | Expr.Tuple(es) ->
+          es |> List.mapi (fun i e -> printExpr kind prefix lPrec (i::path) e)
+             |> List.reduce (fun p1 p2 -> p1 ++ text ", " ++ p2) )
+
     |> wrapParens |> withId prefix path
     
  
@@ -221,6 +243,15 @@ module Html =
 // ------------------------------------------------------------------------------------------------
 
 module MathJax = 
+
+  /// Add a separator 's' between every two items in 'fs'
+  let sep s fs (ar:string[]) = 
+    let mutable first = true
+    for f in fs do
+      if first then first <- false
+      else ignore (s ar) 
+      ignore (f ar)
+    ar
 
   /// Appends string to the mutable JS array of strings
   let inl s (arr:string[]) = 
@@ -239,10 +270,11 @@ module MathJax =
     arr |> inl ("\,{\\color{op} " + op + "}\,")
 
   /// Formats and appends pattern
-  let pattern pat strs = 
+  let rec pattern (TypedPat(_, pat)) strs = 
     match pat with 
     | Pattern.Var v -> strs |> inl v
     | Pattern.QVar v -> strs |> inl ("?" + v)
+    | Pattern.Tuple(pats) -> strs |> inl "(" |> sep (inl ", ") (List.map pattern pats) |> inl ")" 
 
   /// If the formatting function 'f' produces less than 'n' segments, we use 
   /// whetever it returns, otherwise we use the function 'g' instead.
@@ -265,6 +297,9 @@ module MathJax =
         (fun (ar:string[]) -> ar.push(")"); ar)
     // Format the expression and then close the opening bracket (if opened)
     ( match e with
+      | Expr.Builtin _ -> failwith "TODO"
+      | Expr.Tuple(es) ->
+         ar |> sep (inl ", ") (List.map (expr lPrec) es)
       | Expr.Var(v) -> ar |> inl v
       | Expr.QVar(v) -> ar |> inl ("?" + v)
       | Expr.Integer(n) -> ar |> num n
@@ -314,7 +349,9 @@ module MathJax =
   /// Format a type (optionally with color - but we don't do this for types inside coeffects)
   and typ kind colored t (ar:string[]) =
     if colored then ar.push("{\\color{typ} ")
-    match t with 
+    match t with
+    | Type.Tuple(ts) ->
+        ar |> inl "(" |> sep (inl "\\ast") (List.map (typ kind colored) ts) |> inl ")" |> ignore
     | Type.Func(c, t1, t2) -> 
         ar |> typ kind colored t1 |> inl "\\xrightarrow{" |> coeff kind true c 
            |> inl "}" |> typ kind colored t2 |> ignore
@@ -326,15 +363,6 @@ module MathJax =
   let judgement kind (Typed.Typed((v, c, t), e) as te) (ar:string[]) =
     ar |> vars kind v |> inl "\\,{\\small @}\\," |> coeff kind false c 
        |> inl "\\vdash " |> expr 0 te |> inl ":" |> typ kind true t
-
-  /// Add a separator 's' between every two items in 'fs'
-  let sep s fs (ar:string[]) = 
-    let mutable first = true
-    for f in fs do
-      if first then first <- false
-      else ignore (s ar) 
-      ignore (f ar)
-    ar
 
   /// Wraps the specified formatting function in LaTeX array
   let array f ar = 
@@ -360,7 +388,7 @@ module MathJax =
       if root then array (judgement kind te)
       else dfrac [ array (judgement kind te) ] (array (inl "(\\ldots)"))
     match e with
-    | Expr.Var _ | Expr.QVar _ | Expr.Integer _ -> 
+    | Expr.Builtin _ | Expr.Var _ | Expr.QVar _ | Expr.Integer _ -> 
         ar |> dfrac [] conclusion
     | Expr.Prev(e) | Expr.Fun(_, e) ->
         ar |> dfrac [ typedTree kind e ] conclusion
@@ -368,4 +396,6 @@ module MathJax =
     | Expr.Binary(_, e1, e2)
     | Expr.Let(_, e1, e2) ->
         ar |> dfrac [ typedTree kind e1; typedTree kind e2 ] conclusion
+    | Expr.Tuple(es) ->
+        ar |> dfrac (List.map (typedTree kind) es) conclusion
     

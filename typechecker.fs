@@ -65,28 +65,90 @@ module Result =
     { rc with CoeffectConstraints = rc.CoeffectConstraints @ constr }
 
 /// Helper that returns the type of a typed expression
-let typ (Typed.Typed((_, _, t), _)) = t
+let typ (Typed((_, _, t), _)) = t
+/// Helper that returns the type of a typed expression
+let ptyp (TypedPat((_, _, t), _)) = t
 /// Helper that returns the coeffect of a typed expression
-let coeff (Typed.Typed((_, c, _), _)) = c
-
+let coeff (Typed((_, c, _), _)) = c
+/// Creates type information containing just the type (for use in patterns)
+let justTyp t = Map.empty, Coeffect.Ignore, t
+/// Workaround for a FunScript bug
+let unzip l = List.foldBack (fun (x,y) (xs,ys) -> x::xs, y::ys) l ([], [])
 
 // ------------------------------------------------------------------------------------------------
 // Type checking: InputContext -> Typed<unit> -> Typed<Vars * Coeffect * Type> * ResultContext
 // ------------------------------------------------------------------------------------------------
 
+/// Type checks a pattern & adds bound variables to the context 
+let rec checkPattern ctx (TypedPat((), pat))= 
+  match pat with 
+  | Pattern.Var v ->
+      let varTyp = Type.Variable(ctx.NewTypeVar())
+      let ctx = Context.addVar v varTyp ctx
+      TypedPat(justTyp varTyp, Pattern.Var v), ctx
+
+  | Pattern.Tuple pats ->
+      let typedPats, ctx = pats |> List.fold (fun (typedPats, ctx) pat -> 
+        let typedPat, ctx = checkPattern ctx pat
+        typedPat::typedPats, ctx) ([], ctx)
+      let typedPats = List.rev typedPats
+      TypedPat(justTyp (Type.Tuple(List.map ptyp typedPats)), Pattern.Tuple(typedPats)), ctx
+
+  | Pattern.QVar _ ->
+      failwith "The ?v pattern is allowed only in let bindings."
 
 /// The type checking function that reconstructs types and collects type & coeffect constraints
-let rec check ctx (Typed.Typed((), e)) : Typed<Vars * Coeffect * Type> * ResultContext = 
+let rec check ctx (Typed((), e)) : Typed<Vars * Coeffect * Type> * ResultContext = 
   match e with 
+
+  // Implicit parameters 
+
+  | Expr.Let(TypedPat((), Pattern.QVar qv), arg, body) ->
+      let earg, carg = check ctx arg
+      // Add implicit parameter to the scope
+      let ebody, cbody = check (Context.addImplicit qv (typ earg) ctx) body
+      // Add coeffect constraint ` { ?qv } + coeffVar = coeff body` and use
+      // `coeffVar + (coeffVar * coeff arg)` as the coeffect of the let binding
+      let cvar = Coeffect.Variable(ctx.NewCoeffectVar())
+      let cconstrs = [ Coeffect.Split(Coeffect.ImplicitParam(qv, typ earg), cvar), coeff ebody ]
+      let c = Coeffect.Split(cvar, Coeffect.Seq(cvar, coeff earg))
+      let res = Result.merge carg cbody |> Result.constrainCoeffects cconstrs
+      Typed((ctx.Variables, c, typ ebody), Expr.Let(TypedPat(justTyp (typ earg), Pattern.QVar qv), earg, ebody)), res
+
+  | Expr.QVar(name) ->
+      let typ = 
+        match ctx.Variables.TryFind name with 
+        | Some typ -> typ
+        | None -> Type.Variable(ctx.NewTypeVar())
+      let res = Result.addImplicit name typ Result.empty
+      Typed((ctx.Variables, Coeffect.ImplicitParam(name, typ), typ), Expr.QVar name), res
+
+  // Data-flow computations
+
+  | Expr.Prev(e) ->
+      let ebody, cbody = check ctx e
+      let c = Coeffect.Seq(Coeffect.Past 1, coeff ebody)
+      Typed((ctx.Variables, c, typ ebody), Expr.Prev(ebody)), cbody
+
+  // Normal expressions of the language
+
+  | Expr.Builtin _ -> failwith "Built-in"
+
+  | Expr.Tuple(args) ->
+      let eargs, ress = List.map (check ctx) args |> unzip
+      let res = List.reduce Result.merge ress
+      let c = eargs |> List.map coeff |> List.reduce (fun c1 c2 -> Coeffect.Split(c1, c2))
+      Typed((ctx.Variables, c, Type.Tuple(List.map typ eargs)), Expr.Tuple(eargs)), res
+
   | Expr.Var(name) ->
       let typ = 
         match ctx.Variables.TryFind name with
         | Some typ -> typ
         | None -> failwith ("Variable '" + name + "' not in scope.")
-      Typed.Typed((ctx.Variables, Coeffect.Use, typ), Expr.Var name), Result.empty
+      Typed((ctx.Variables, Coeffect.Use, typ), Expr.Var name), Result.empty
 
   | Expr.Integer(n) ->
-      Typed.Typed((ctx.Variables, Coeffect.Ignore, Type.Primitive "int"), Expr.Integer n), Result.empty
+      Typed((ctx.Variables, Coeffect.Ignore, Type.Primitive "int"), Expr.Integer n), Result.empty
 
   | Expr.Binary(op, l, r) ->
       let el, cl = check ctx l
@@ -94,15 +156,11 @@ let rec check ctx (Typed.Typed((), e)) : Typed<Vars * Coeffect * Type> * ResultC
       let cc = [ typ el, Type.Primitive "int"; typ er, Type.Primitive "int" ]
       let res = Result.merge cl cr |> Result.constrainTypes cc
       let c = Coeffect.Split(coeff el, coeff er)
-      Typed.Typed((ctx.Variables, c, Type.Primitive "int"), Expr.Binary(op, el, er)), res
+      Typed((ctx.Variables, c, Type.Primitive "int"), Expr.Binary(op, el, er)), res
 
-  | Expr.Fun(Pattern.QVar v, body) ->
-      failwith "The ?v pattern is allowed only in let bindings, not in functions."
-
-  | Expr.Fun(Pattern.Var v, body) ->
-      // Type check body with context containing `v : 'newTypeVar`
-      let varTyp = Type.Variable(ctx.NewTypeVar())
-      let ctx = Context.addVar v varTyp ctx
+  | Expr.Fun(pat, body) ->
+      // Type check body with context containing `v : 'newTypeVar` for each new variable
+      let typedPat, ctx = checkPattern ctx pat
       let body, cbody = check ctx body      
       // Generate coeffect variables `r ^ s` and constrain `r ^ s = bodyCoeffect`
       // and also `r = c1 + .. + cn where ci \in implicitParamsInScope`
@@ -119,7 +177,7 @@ let rec check ctx (Typed.Typed((), e)) : Typed<Vars * Coeffect * Type> * ResultC
       let cbody = cbody |> Result.constrainCoeffects ([Coeffect.Merge(cvar1, cvar2), coeff body ] @ constrs)
 
       // Return type is `varTyp -{ s }-> typOfBody` with context annotated with `r`
-      Typed.Typed((ctx.Variables, cvar1, Type.Func(cvar2, varTyp, typ body)), Expr.Fun(Pattern.Var v, body)), cbody
+      Typed((ctx.Variables, cvar1, Type.Func(cvar2, ptyp typedPat, typ body)), Expr.Fun(typedPat, body)), cbody
 
   | Expr.App(l, r) ->
       let el, cl = check ctx l
@@ -130,44 +188,15 @@ let rec check ctx (Typed.Typed((), e)) : Typed<Vars * Coeffect * Type> * ResultC
       let res = Result.merge cl cr |> Result.constrainTypes [ typ el, Type.Func(cvar, typ er, tout) ]
       // Resulting coeffect is `r + (s * t)` where r = coeff el and s = coeff er
       let c = Coeffect.Split(coeff el, Coeffect.Seq(cvar, coeff er))
-      Typed.Typed((ctx.Variables, c, tout), Expr.App(el, er)), res
+      Typed((ctx.Variables, c, tout), Expr.App(el, er)), res
 
-  | Expr.Let(Pattern.Var v, arg, body) ->
+  | Expr.Let(pat, arg, body) ->
       let earg, carg = check ctx arg
-      let ctx = Context.addVar v (typ earg) ctx
+      let typedPat, ctx = checkPattern ctx pat
       let ebody, cbody = check ctx body
-      let res = Result.merge carg cbody 
+      let res = Result.merge carg cbody |> Result.constrainTypes [ typ earg, ptyp typedPat ]
       let c = Coeffect.Split(coeff ebody, Coeffect.Seq(coeff ebody, coeff earg))
-      Typed.Typed((ctx.Variables, c, typ ebody), Expr.Let(Pattern.Var v, earg, ebody)), res
-
-  // Implicit parameters 
-
-  | Expr.Let(Pattern.QVar qv, arg, body) ->
-      let earg, carg = check ctx arg
-      // Add implicit parameter to the scope
-      let ebody, cbody = check (Context.addImplicit qv (typ earg) ctx) body
-      // Add coeffect constraint ` { ?qv } + coeffVar = coeff body` and use
-      // `coeffVar + (coeffVar * coeff arg)` as the coeffect of the let binding
-      let cvar = Coeffect.Variable(ctx.NewCoeffectVar())
-      let cconstrs = [ Coeffect.Split(Coeffect.ImplicitParam(qv, typ earg), cvar), coeff ebody ]
-      let c = Coeffect.Split(cvar, Coeffect.Seq(cvar, coeff earg))
-      let res = Result.merge carg cbody |> Result.constrainCoeffects cconstrs
-      Typed.Typed((ctx.Variables, c, typ ebody), Expr.Let(Pattern.QVar qv, earg, ebody)), res
-
-  | Expr.QVar(name) ->
-      let typ = 
-        match ctx.Variables.TryFind name with 
-        | Some typ -> typ
-        | None -> Type.Variable(ctx.NewTypeVar())
-      let res = Result.addImplicit name typ Result.empty
-      Typed.Typed((ctx.Variables, Coeffect.ImplicitParam(name, typ), typ), Expr.QVar name), res
-
-  // Data-flow computations
-
-  | Expr.Prev(e) ->
-      let ebody, cbody = check ctx e
-      let c = Coeffect.Seq(Coeffect.Past 1, coeff ebody)
-      Typed.Typed((ctx.Variables, c, typ ebody), Expr.Prev(ebody)), cbody
+      Typed((ctx.Variables, c, typ ebody), Expr.Let(typedPat, earg, ebody)), res
            
 // ------------------------------------------------------------------------------------------------
 // Entry point - run the type checker & solve the constraints

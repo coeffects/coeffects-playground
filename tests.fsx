@@ -50,6 +50,11 @@ let h = (fun x ->
   f (g 42)) in
 h 0     """.Trim()
 
+
+  let source () = "fun a -> ?x + ?y + a"
+  let source () = "let (a, (b, (c), d)) = 1, (2,3,4) in a+b+c+d"
+  let source () = "let a = 1,(2,3) in 5"
+
   let (Parsec.Parser lex) = Lexer.lexer
   let tokens = lex (List.ofArray (source().ToCharArray())) |> Option.get |> snd
   let tokens' = tokens |> List.filter (function Token.White _ -> false | _ -> true)
@@ -59,7 +64,12 @@ h 0     """.Trim()
   let solved, cequals = solve ct.TypeConstraints Map.empty []
   let csolved = ImplicitParams.solve (ct.CoeffectConstraints @ cequals)
 
-
   for c1, c2 in ct.CoeffectConstraints @ cequals do
     printfn "%A\n = %A\n" c1 c2 
 
+  let typed = TypeChecker.typeCheck CoeffectKind.ImplicitParams expr
+  let translated : Typed<unit> = translate (Typed((), Expr.Var "input")) [] typed
+
+
+  TypeChecker.typeCheck CoeffectKind.ImplicitParams translated
+  ()

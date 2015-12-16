@@ -20,6 +20,8 @@ let rec solve constraints assigns cequals =
   | (l, r)::rest when l = r -> solve rest assigns cequals
   | (Type.Func(c1, l1, r1), Type.Func(c2, l2, r2))::rest ->
       solve ((l1, l2)::(r1, r2)::rest) assigns ((c1, c2)::cequals)
+  | (Type.Tuple(ls), Type.Tuple(rs))::rest when List.length ls = List.length rs ->
+      solve ((List.zip ls rs) @ rest) assigns cequals
   | (t1, t2)::_ ->
       failwith "Cannot unify types"
 
@@ -31,6 +33,8 @@ let rec normalizeType evalc solutions typ =
       match Map.tryFind s solutions with
       | Some t -> normalizeType evalc solutions t
       | None -> Type.Variable s
+  | Type.Tuple(ts) ->
+      Type.Tuple(List.map (normalizeType evalc solutions) ts)
   | Type.Primitive s -> typ
   | Type.Func(c, l, r) -> 
       Type.Func(evalc c, normalizeType evalc solutions l, normalizeType evalc solutions r)
