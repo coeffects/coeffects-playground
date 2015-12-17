@@ -76,9 +76,12 @@ in h 42  """.Trim()
   [<JSEmitInline("MathJax.Hub.Queue({0});")>]
   let queueAction(f:unit -> unit) : unit = failwith "!"
 
-  let rec translate ctx vars (Typed(_, e)) = 
-    let (!) e = Typed((), e)
-    let (!!) p = TypedPat((), p)
+  let (!) e = Typed((), e)
+  let (!!) p = TypedPat((), p)
+  let coeff (Typed((_, c, _), _)) = c
+  let typ (Typed((_, _, t), _)) = t
+
+  let rec translate ctx vars (Typed((v,c,t), e)) = 
     match e with
     | Expr.Integer(n) ->
         !Expr.Integer(n)
@@ -87,23 +90,29 @@ in h 42  """.Trim()
         let rec getVarProj e vars = 
           match vars with
           | [] -> failwith "Variable not in scope"
-          | x::xs when x = v -> !Expr.App(!Expr.Builtin("fst"), e)
-          | x::xs -> getVarProj (!Expr.App(!Expr.Builtin("snd"), e)) xs
-        getVarProj (!Expr.App(!Expr.Builtin("counit"), ctx)) vars
+          | x::xs when x = v -> !Expr.App(!Expr.Builtin("fst", []), e)
+          | x::xs -> getVarProj (!Expr.App(!Expr.Builtin("snd", []), e)) xs
+        getVarProj (!Expr.App(!Expr.Builtin("counit", [c]), ctx)) vars
 
     | Expr.QVar(v) ->
-        !Expr.App(!Expr.Builtin("lookup"), ctx)
+        !Expr.App(!Expr.Builtin("lookup", [Coeffect.ImplicitParam(v, t)] ), ctx)
 
     | Expr.App(e1, e2) ->
-        let ctxSplit = !Expr.App(!Expr.Builtin("split"), !Expr.App(!Expr.Builtin("duplicate"), ctx))
+        let r, s, t = coeff e1, coeff e2, match typ e1 with Type.Func(c, _, _) -> c | _ -> failwith "Not function!"
+        
+        let ctxSplit = !Expr.App(!Expr.Builtin("split", [r; Coeffect.Seq(s, t)]), !Expr.App(!Expr.Builtin("duplicate", [Coeffect.Split(r, Coeffect.Seq(s, t))]), ctx))
         let fn = !Expr.Fun(!!Pattern.Var("ctx"), translate (!Expr.Var("ctx")) vars e2)
-        let cobind = !Expr.App(!Expr.App(!Expr.Builtin("cobind"), fn), !Expr.Var("ctx2"))
+        let cobind = !Expr.App(!Expr.App(!Expr.Builtin("cobind", [s; t]), fn), !Expr.Var("ctx2"))
         let body = !Expr.App(translate (!Expr.Var("ctx1")) vars e1, cobind)
         !Expr.Let(!!Pattern.Tuple([!!Pattern.Var("ctx1"); !!Pattern.Var("ctx2")]), ctxSplit, body)
 
     | Expr.Fun(TypedPat(_, Pattern.Var v), e) ->
-        let merged = Expr.App(!Expr.Builtin("merge"), !Expr.Tuple([!Expr.Var(v); ctx]))
+        let r, s = c, match t with Type.Func(c, _, _) -> c | _ -> failwith "Not function!"
+
+        let merged = Expr.App(!Expr.Builtin("merge", [r; s]), !Expr.Tuple([!Expr.Var(v); ctx]))
         !Expr.Fun(!!Pattern.Var(v), translate (!merged) (v::vars) e)
+(*
+TODO
 
     | Expr.Let(TypedPat(_, Pattern.Var v), e1, e2) -> 
         let ctxSplit = !Expr.App(!Expr.Builtin("split"), !Expr.App(!Expr.Builtin("duplicate"), ctx))
@@ -112,9 +121,10 @@ in h 42  """.Trim()
         let merged = !Expr.App(!Expr.Builtin("merge"), !Expr.Tuple([cobind; !Expr.Var("ctx2")]))
         let body = translate merged (v::vars) e2
         !Expr.Let(!!Pattern.Tuple([!!Pattern.Var("ctx1"); !!Pattern.Var("ctx2")]), ctxSplit, body)
-
+*)
     | Expr.Binary(op, e1, e2) ->
-        let ctxSplit = !Expr.App(!Expr.Builtin("split"), !Expr.App(!Expr.Builtin("duplicate"), ctx))
+        let r, s = coeff e1, coeff e2
+        let ctxSplit = !Expr.App(!Expr.Builtin("split", [r; s]), !Expr.App(!Expr.Builtin("duplicate", [Coeffect.Split(r, s)]), ctx))
         let body = !Expr.Binary(op, translate (!Expr.Var("ctx1")) vars e1, translate (!Expr.Var("ctx2")) vars e2)
         !Expr.Let(!!Pattern.Tuple([!!Pattern.Var("ctx1"); !!Pattern.Var("ctx2")]), ctxSplit, body)
 
@@ -136,6 +146,40 @@ in h 42  """.Trim()
     | ExprShape.Nested(s, es) -> Typed(t, ExprShape.recreate s (List.map contract es))
     | e -> Typed(t, e)
 
+  let builtins (ctx:TypeChecker.InputContext) (n, c) = 
+    let cvar() = Coeffect.Variable(ctx.NewCoeffectVar())
+    let tvar() = Type.Variable(ctx.NewTypeVar())
+    let ( --> ) l r = Type.Func(Coeffect.Use, l, r)
+    let ( * ) l r = Type.Tuple [l; r]
+    let ( ^^ ) l r = Coeffect.Merge(l, r)
+    let ( ++ ) l r = Coeffect.Split(l, r)
+    let ( ** ) l r = Coeffect.Seq(l, r)
+    let C c t = Type.Comonad(c, t)
+    match n, c with
+    | "lookup", [Coeffect.ImplicitParam(n, t)] -> 
+        C (cvar()) (tvar()) --> t
+    | "merge", [r; s] -> 
+        let a, b = tvar(), tvar()
+        C r a * C s b --> C (r ^^ s) (a * b)
+    | "split", [r; s] ->
+        let a, b = tvar(), tvar()
+        C (r ++ s) (a * b) --> C r a * C s b
+    | "cobind", [r; s] ->
+        let a, b = tvar(), tvar()
+        (C r a --> b) --> (C (r ** s) a --> C s b)
+    | "counit", [Coeffect.Use] ->
+        let a = tvar()
+        C Coeffect.Use a --> a
+    | "input", [] ->
+        C (cvar()) (tvar())
+    | "fst", [] ->
+        let a, b = tvar(), tvar()
+        a * b --> a
+    | "snd", [] ->
+        let a, b = tvar(), tvar()
+        a * b --> b
+    | _ -> failwith ("Builtin: " + n)
+
   let setup kind prefix = 
     let btn = Globals.document.getElementById(prefix + "-btn") :?> HTMLButtonElement
     let input = Globals.document.getElementById(prefix + "-input") :?> HTMLTextAreaElement
@@ -147,19 +191,25 @@ in h 42  """.Trim()
     input.value <- source prefix
     btn.addEventListener_click(fun e ->
       let (Parsec.Parser lex) = Lexer.lexer
-      let tokens = lex (List.ofArray (input.value.ToCharArray())) |> Option.get |> snd
+      let source = input.value
+
+      //let source = "fun y -> ?x + y"
+      //let kind = CoeffectKind.ImplicitParams
+
+      let tokens = lex (List.ofArray (source.ToCharArray())) |> Option.get |> snd
       let tokens = tokens |> filter (function Token.White _ -> false | _ -> true)
       let (Parsec.Parser pars) = Parser.expr ()
       let expr = pars tokens |> Option.get |> snd
-      let typed = TypeChecker.typeCheck kind expr
+      let typed = TypeChecker.typeCheck builtins kind expr
       output.innerHTML <- Html.print (Html.printExpr kind prefix 0 [] typed)
-      (*
+      
       let transle  = 
-        translate (Typed((), Expr.Var("input"))) [] typed 
+        translate (Typed((), Expr.Builtin("input", []))) [] typed 
         |> contract
-        |> Expr.mapType (fun () -> 0, 0, Type.Func(Coeffect.Ignore, Type.Primitive "todo", Type.Primitive "todo"))
+        |> TypeChecker.typeCheck builtins kind 
+
       transl.innerHTML <- Html.print (Html.printExpr kind prefix 0 [] transle)
-      *)
+      
       let rec findSubExpression locations (Typed.Typed(_, e) as te) : Typed<Vars * Coeffect * Type> = 
         match locations, e with
         | [], _ -> te

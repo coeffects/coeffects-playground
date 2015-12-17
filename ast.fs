@@ -23,37 +23,6 @@ type Token =
   | QIdent of string
   | White of string
 
-/// Represents a pattern of the coeffect language
-[<RequireQualifiedAccess>]
-type Pattern<'T> =
-  | Var of string
-  | Tuple of list<TypedPat<'T>>
-  | QVar of string
-
-/// Represents a pattern with a type annotation of generic type
-and TypedPat<'T> =
-  | TypedPat of 'T * Pattern<'T>  
-
-/// Represents an expression of the coeffect language
-[<RequireQualifiedAccess>]
-type Expr<'T> = 
-  | Fun of TypedPat<'T> * Typed<'T>
-  | Let of TypedPat<'T> * Typed<'T> * Typed<'T>
-  | App of Typed<'T> * Typed<'T>
-  | Var of string
-  | Integer of int
-  | Binary of string * Typed<'T> * Typed<'T>
-  // Coeffect language-only
-  | Prev of Typed<'T>
-  | QVar of string
-  // Translation target language-only
-  | Builtin of string
-  | Tuple of list<Typed<'T>>
-
-/// Represents an expression with a type annotation of generic type
-and Typed<'T> =
-  | Typed of 'T * Expr<'T>
-
 /// Specifies the kind of coeffect we want to display
 [<RequireQualifiedAccess>]
 type CoeffectKind = 
@@ -79,6 +48,39 @@ and [<RequireQualifiedAccess>] Type =
   | Primitive of string
   | Func of Coeffect * Type * Type
   | Tuple of list<Type>
+  // Translation target langauge-only
+  | Comonad of Coeffect * Type
+
+/// Represents a pattern of the coeffect language
+[<RequireQualifiedAccess>]
+type Pattern<'T> =
+  | Var of string
+  | Tuple of list<TypedPat<'T>>
+  | QVar of string
+
+/// Represents a pattern with a type annotation of generic type
+and TypedPat<'T> =
+  | TypedPat of 'T * Pattern<'T>  
+
+/// Represents an expression of the coeffect language
+[<RequireQualifiedAccess>]
+type Expr<'T> = 
+  | Fun of TypedPat<'T> * Typed<'T>
+  | Let of TypedPat<'T> * Typed<'T> * Typed<'T>
+  | App of Typed<'T> * Typed<'T>
+  | Var of string
+  | Integer of int
+  | Binary of string * Typed<'T> * Typed<'T>
+  // Coeffect language-only
+  | Prev of Typed<'T>
+  | QVar of string
+  // Translation target language-only
+  | Builtin of string * Coeffect list
+  | Tuple of list<Typed<'T>>
+
+/// Represents an expression with a type annotation of generic type
+and Typed<'T> =
+  | Typed of 'T * Expr<'T>
 
 /// Types of variables in the context
 type Vars = Map<string, Type>
@@ -112,7 +114,7 @@ module Expr =
       | Expr.QVar(v) -> Expr.QVar(v)
       | Expr.Var(v) -> Expr.Var(v)
       | Expr.Tuple(es) -> Expr.Tuple(List.map (mapType f) es)
-      | Expr.Builtin(s) -> Expr.Builtin(s)
+      | Expr.Builtin(s, annots) -> Expr.Builtin(s, annots)
     Typed(f t, e)
 
 module ExprShape = 
@@ -141,5 +143,5 @@ module ExprShape =
     | Expr.QVar(v), _ -> Expr.QVar(v)
     | Expr.Var(v), _ -> Expr.Var(v)
     | Expr.Tuple(_), es -> Expr.Tuple(es)
-    | Expr.Builtin(s), _ -> Expr.Builtin(s)
+    | Expr.Builtin(s, a), _ -> Expr.Builtin(s, a)
     | _ -> failwith "Invalid expression shape"

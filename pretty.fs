@@ -165,6 +165,11 @@ module Html =
   /// Print type annotation to the given array
   and printTyp kind typ (sb:string[]) = 
     match typ with 
+    | Type.Comonad(cl, t) ->
+        printTyp kind t sb
+        sb.push("@")
+        sb.push("?!?")
+
     | Type.Variable s -> sb.push("&quot;"); sb.push(s)
     | Type.Tuple(ts) ->
         sb.push("(")
@@ -207,7 +212,7 @@ module Html =
     // Generate the body and then call wrapping functions
     ( match expr with
       | Expr.Var(s) -> span ["title", inl (printTyp kind typ); "class","i"] s 
-      | Expr.Builtin(s) -> span ["class","op"] s 
+      | Expr.Builtin(s, _) -> span ["class","op"] s 
       | Expr.QVar(s) -> span ["title", inl (printTyp kind typ); "class","i"] ("?" + s)
       | Expr.Integer(n) -> span ["class","n"] (string n)
       | Expr.Prev(e) -> span ["class","k"] "prev" ++ text " " ++ printExpr kind prefix thisPrec (0::path) e
@@ -350,6 +355,8 @@ module MathJax =
   and typ kind colored t (ar:string[]) =
     if colored then ar.push("{\\color{typ} ")
     match t with
+    | Type.Comonad(c, t) ->
+        ar |> inl "C^{" |> coeff kind true c |> inl "}" |> ignore
     | Type.Tuple(ts) ->
         ar |> inl "(" |> sep (inl "\\ast") (List.map (typ kind colored) ts) |> inl ")" |> ignore
     | Type.Func(c, t1, t2) -> 

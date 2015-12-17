@@ -10,7 +10,8 @@ open Coeffects.Solver
 
 /// Context that is propagated from the bottom to the leafs in type checking
 type InputContext = 
-  { Variables : Vars
+  { BuiltinTypings : InputContext -> string * Coeffect list -> Type
+    Variables : Vars
     CoeffectKind : CoeffectKind
     NewTypeVar : unit -> string 
     NewCoeffectVar : unit -> string
@@ -24,13 +25,15 @@ type ResultContext =
 
 /// Helper functions for adding things to the input context
 module Context = 
-  let empty kind =
+  let empty builtins kind =
     let lastTyp = ref 0
     let lastCoef = ref 0
+    let newTyVar = fun () -> incr lastTyp; string lastTyp.Value 
     { Variables = Map.empty
       CoeffectKind = kind
       NewCoeffectVar = fun () -> incr lastCoef; string lastCoef.Value 
-      NewTypeVar = fun () -> incr lastTyp; string lastTyp.Value 
+      NewTypeVar = newTyVar
+      BuiltinTypings = builtins 
       ImplicitParams = Map.empty }
   let addVar name typ ctx = 
     { ctx with Variables = ctx.Variables.Add(name, typ) }
@@ -132,7 +135,9 @@ let rec check ctx (Typed((), e)) : Typed<Vars * Coeffect * Type> * ResultContext
 
   // Normal expressions of the language
 
-  | Expr.Builtin _ -> failwith "Built-in"
+  | Expr.Builtin(name, cl) -> 
+      let t = ctx.BuiltinTypings ctx (name, cl)
+      Typed((ctx.Variables, Coeffect.Ignore, t), Expr.Builtin(name, cl)), Result.empty
 
   | Expr.Tuple(args) ->
       let eargs, ress = List.map (check ctx) args |> unzip
@@ -202,8 +207,8 @@ let rec check ctx (Typed((), e)) : Typed<Vars * Coeffect * Type> * ResultContext
 // Entry point - run the type checker & solve the constraints
 // ------------------------------------------------------------------------------------------------
 
-let typeCheck kind expr : Typed<Vars * Coeffect * Type> =
-  let annotated, ctx = check (Context.empty kind) expr
+let typeCheck builtins kind expr : Typed<Vars * Coeffect * Type> =
+  let annotated, ctx = check (Context.empty builtins kind) expr
   let solved, cequals = solve ctx.TypeConstraints Map.empty []
     
   let normalizeCoeffect = 

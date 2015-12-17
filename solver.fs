@@ -22,13 +22,16 @@ let rec solve constraints assigns cequals =
       solve ((l1, l2)::(r1, r2)::rest) assigns ((c1, c2)::cequals)
   | (Type.Tuple(ls), Type.Tuple(rs))::rest when List.length ls = List.length rs ->
       solve ((List.zip ls rs) @ rest) assigns cequals
+  | (Type.Comonad(c1, t1), Type.Comonad(c2, t2))::rest ->
+      solve ((t1,t2) :: rest) assigns ((c1, c2)::cequals)
   | (t1, t2)::_ ->
-      failwith "Cannot unify types"
+      failwithf "Cannot unify types: %A = %A" t1 t2
 
 /// Replace solved type variables with the assigned types
 /// (and also transform coeffects using the given function)
 let rec normalizeType evalc solutions typ =
   match typ with 
+  | Type.Comonad(c, t) -> Type.Comonad(evalc c, normalizeType evalc solutions t)
   | Type.Variable s -> 
       match Map.tryFind s solutions with
       | Some t -> normalizeType evalc solutions t
