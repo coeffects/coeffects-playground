@@ -146,7 +146,7 @@ TODO
     | ExprShape.Nested(s, es) -> Typed(t, ExprShape.recreate s (List.map contract es))
     | e -> Typed(t, e)
 
-  let builtins (ctx:TypeChecker.InputContext) (n, c) = 
+  let builtins inputCoeffect (ctx:TypeChecker.InputContext) (n, c) = 
     let cvar() = Coeffect.Variable(ctx.NewCoeffectVar())
     let tvar() = Type.Variable(ctx.NewTypeVar())
     let ( --> ) l r = Type.Func(Coeffect.Use, l, r)
@@ -171,7 +171,7 @@ TODO
         let a = tvar()
         C Coeffect.Use a --> a
     | "input", [] ->
-        C (cvar()) (tvar())
+        C inputCoeffect (tvar())
     | "fst", [] ->
         let a, b = tvar(), tvar()
         a * b --> a
@@ -193,21 +193,33 @@ TODO
       let (Parsec.Parser lex) = Lexer.lexer
       let source = input.value
 
-      //let source = "fun y -> ?x + y"
-      //let kind = CoeffectKind.ImplicitParams
+      (*
+      let source = "(fun x -> ?y)"
+      
+      // TODO: Rename all type/coeffect variables before translation to remove clashes
+      // TODO: Separate solver for translated terms (ignores all coeffects from
+      // expressions; only unifies coeffect variables from comonad types - cequals)
+       
+      let kind = CoeffectKind.ImplicitParams
+      *)
 
       let tokens = lex (List.ofArray (source.ToCharArray())) |> Option.get |> snd
       let tokens = tokens |> filter (function Token.White _ -> false | _ -> true)
       let (Parsec.Parser pars) = Parser.expr ()
       let expr = pars tokens |> Option.get |> snd
-      let typed = TypeChecker.typeCheck builtins kind expr
+      let typed = TypeChecker.typeCheck (fun _ _ -> failwith "!") kind expr
       output.innerHTML <- Html.print (Html.printExpr kind prefix 0 [] typed)
       
       let transle  = 
         translate (Typed((), Expr.Builtin("input", []))) [] typed 
         |> contract
-        |> TypeChecker.typeCheck builtins kind 
-
+        |> Expr.mapType (fun () -> Map.empty, Coeffect.Ignore, Type.Func(Coeffect.Ignore, Type.Primitive "!", Type.Primitive "!"))
+        //|> TypeChecker.typeCheck (builtins (coeff typed)) kind 
+(*
+[ (Use, Variable "3");   
+  (Split (Ignore,ImplicitParam ("y",Variable "2")), Ignore);
+  (Use, Variable "2")]
+*)
       transl.innerHTML <- Html.print (Html.printExpr kind prefix 0 [] transle)
       
       let rec findSubExpression locations (Typed.Typed(_, e) as te) : Typed<Vars * Coeffect * Type> = 

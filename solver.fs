@@ -25,7 +25,7 @@ let rec solve constraints assigns cequals =
   | (Type.Comonad(c1, t1), Type.Comonad(c2, t2))::rest ->
       solve ((t1,t2) :: rest) assigns ((c1, c2)::cequals)
   | (t1, t2)::_ ->
-      failwithf "Cannot unify types: %A = %A" t1 t2
+      failwith "Cannot unify types"
 
 /// Replace solved type variables with the assigned types
 /// (and also transform coeffects using the given function)
@@ -137,7 +137,7 @@ module ImplicitParams =
             loop (addAssignment v (rc - set[p]) assigns) rest
 
         | [] -> assigns
-        | _ -> failwith "Invalid constraint"
+        | c -> failwith "Invalid constraint"
             
       loop assigns constrs)
 
@@ -187,6 +187,6 @@ module Dataflow =
             let n = evalCoeffect assigns r
             loop (addAssignment v n assigns) rest
         | [] -> assigns
-        | _ -> failwith "Invalid constraint"            
+        | c -> failwith "Invalid constraint"
       loop assigns constrs)
   
