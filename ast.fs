@@ -28,6 +28,7 @@ type Token =
 type CoeffectKind = 
   | ImplicitParams 
   | PastValues
+  | None
 
 [<RequireQualifiedAccess>]
 type Coeffect = 
@@ -39,6 +40,7 @@ type Coeffect =
   | Split of Coeffect * Coeffect
   | Seq of Coeffect * Coeffect
   // Special coeffects for concrete applications
+  | None 
   | Past of int
   | ImplicitParam of string * Type
 
@@ -116,6 +118,17 @@ module Expr =
       | Expr.Tuple(es) -> Expr.Tuple(List.map (mapType f) es)
       | Expr.Builtin(s, annots) -> Expr.Builtin(s, annots)
     Typed(f t, e)
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Coeffect =
+  let (|Closed|_|) c = 
+    let rec isClosed = function
+      | Coeffect.None | Coeffect.Past _ | Coeffect.ImplicitParam _ | Coeffect.Ignore | Coeffect.Use -> true
+      | Coeffect.Merge(c1, c2) 
+      | Coeffect.Split(c1, c2) 
+      | Coeffect.Seq(c1, c2) -> isClosed c1 && isClosed c2
+      | Coeffect.Variable _ -> false
+    if isClosed c then Some(c) else None
 
 module ExprShape = 
   let (|Leaf|Nested|) e =

@@ -106,6 +106,7 @@
     <Compile Include="solver.fs" />
     <Compile Include="typechecker.fs" />
     <Compile Include="pretty.fs" />
+    <Compile Include="translation.fs" />
     <Compile Include="app.fsx" />
     <None Include="tests.fsx" />
   </ItemGroup>

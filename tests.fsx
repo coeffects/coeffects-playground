@@ -9,6 +9,7 @@
 #load "solver.fs"
 #load "typechecker.fs"
 #load "pretty.fs"
+#load "translation.fs"
 
 open System.IO
 open Coeffects
@@ -17,6 +18,63 @@ open Coeffects.Parsec
 open Coeffects.Ast
 open Coeffects.TypeChecker
 open Coeffects.Solver
+open Coeffects.Translation
+
+let translation () =
+  let source = """
+let f = 1 in
+let ?z = 3 in 
+f"""
+
+  //let source = "let ?x = 1 in ?x"  
+  let (Parsec.Parser lex) = Lexer.lexer
+  let tokens = lex (List.ofArray (source.ToCharArray())) |> Option.get |> snd
+  let tokens' = tokens |> List.filter (function Token.White _ -> false | _ -> true)
+  let (Parsec.Parser pars) = Parser.expr ()
+  let expr = pars tokens' |> Option.get |> snd
+  let typed = TypeChecker.typeCheck (fun _ _ -> failwith "!") CoeffectKind.ImplicitParams expr
+      
+  let transle  = 
+    translate (Typed((), Expr.Builtin("input", []))) [] typed 
+    |> contract
+    //|> Expr.mapType (fun () -> Map.empty, Coeffect.Ignore, Type.Func(Coeffect.Ignore, Type.Primitive "!", Type.Primitive "!"))
+    |> TypeChecker.typeCheck (builtins (coeff typed)) CoeffectKind.None
+
+  let annotated, ctx = check (Context.empty (builtins (coeff typed)) CoeffectKind.ImplicitParams) transle
+  let solved, cequals = solve ctx.TypeConstraints Map.empty []
+
+  [ for c1, c2 in cequals do
+      match c1, c2 with
+      | Coeffect.Variable v, Coeffect.Closed o
+      | Coeffect.Closed o, Coeffect.Variable v -> yield v, o
+      | l, r when ImplicitParams.evalCoeffect Map.empty l = ImplicitParams.evalCoeffect Map.empty r -> ()
+      | _ -> failwith "Cannot resolve constraint." ]
+  |> ignore
+      
+  let normalizeCoeffect = 
+    match kind with
+    | CoeffectKind.ImplicitParams -> 
+        // Solve coeffects & reduce to normalized form `p1 + .. + pn` 
+        let csolved = ImplicitParams.solve (ctx.CoeffectConstraints @ cequals)
+        let rec normalizeImplicits c = 
+          ImplicitParams.evalCoeffect csolved c |> Seq.fold (fun c p -> 
+            let t = normalizeType normalizeImplicits solved (ctx.ImplicitTypes.[p])
+            Coeffect.Split(c, Coeffect.ImplicitParam(p, t))) Coeffect.Use
+        normalizeImplicits
+
+    | CoeffectKind.PastValues -> 
+        // Solve coeffects & reduce to normalized form `n` 
+        let psolved = Dataflow.solve (ctx.CoeffectConstraints @ cequals)
+        let normalizePast c = Coeffect.Past(Dataflow.evalCoeffect psolved c)
+        normalizePast
+
+  // Replace all type & coeffect variables with solved version
+  annotated |> Expr.mapType (fun (v, c, t) -> 
+    v |> Map.map (fun _ t -> normalizeType normalizeCoeffect solved t),
+    normalizeCoeffect c, 
+    normalizeType normalizeCoeffect solved t)
+
+  ()
 
 let tests () =
   let source () = """

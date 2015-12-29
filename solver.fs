@@ -19,12 +19,15 @@ let rec solve constraints assigns cequals =
       | None -> solve rest (Map.add v other assigns) cequals
   | (l, r)::rest when l = r -> solve rest assigns cequals
   | (Type.Func(c1, l1, r1), Type.Func(c2, l2, r2))::rest ->
+      //printfn "FUNC: %A\n  = %A" (Type.Func(c1, l1, r1)) (Type.Func(c2, l2, r2))
       solve ((l1, l2)::(r1, r2)::rest) assigns ((c1, c2)::cequals)
   | (Type.Tuple(ls), Type.Tuple(rs))::rest when List.length ls = List.length rs ->
       solve ((List.zip ls rs) @ rest) assigns cequals
   | (Type.Comonad(c1, t1), Type.Comonad(c2, t2))::rest ->
+      //printfn "COMO: %A\n  = %A" (Type.Comonad(c1, t1)) (Type.Comonad(c2, t2))
       solve ((t1,t2) :: rest) assigns ((c1, c2)::cequals)
   | (t1, t2)::_ ->
+      //failwithf "Cannot unify types:\n - %A\n - %A" t1 t2
       failwith "Cannot unify types"
 
 /// Replace solved type variables with the assigned types
@@ -99,6 +102,7 @@ module ImplicitParams =
     | Coeffect.Split(c1, c2)
     | Coeffect.Seq(c1, c2) -> Set.union (evalCoeffect assigns c1) (evalCoeffect assigns c2)
     | Coeffect.Variable s -> defaultArg (Map.tryFind s assigns) Set.empty
+    | Coeffect.None -> failwith "Unexpected none in implicit parameter coeffects"
     | Coeffect.Past _ -> failwith "Unexpected past in implicit parameter coeffects"
 
   /// Solve coeffect constraints for implict parameters. Start with empty set for each parameter,

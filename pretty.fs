@@ -28,6 +28,7 @@ let (|Let|) a x = a, x
 let flattenCoeffects kind c = 
   let rec flattenImplicits c = 
     match c with
+    | Coeffect.None -> []
     | Coeffect.Ignore | Coeffect.Use -> []
     | Coeffect.ImplicitParam(s, t) -> [s, t]
     | Coeffect.Merge(c1, c2) | Coeffect.Split(c1, c2) | Coeffect.Seq(c1, c2) -> 
@@ -36,6 +37,7 @@ let flattenCoeffects kind c =
     | Coeffect.Variable _ -> failwith "Unresolved coeffect variable"
   let rec flattenPast c = 
     match c with
+    | Coeffect.None -> 0
     | Coeffect.Ignore | Coeffect.Use -> 0  
     | Let min (op, Coeffect.Merge(c1, c2))
     | Let max (op, Coeffect.Split(c1, c2))
@@ -47,7 +49,7 @@ let flattenCoeffects kind c =
   match kind with
   | CoeffectKind.ImplicitParams -> PrimitiveCoeffect.ResourceSet (flattenImplicits c)
   | CoeffectKind.PastValues -> PrimitiveCoeffect.PastValues (flattenPast c)
-
+  | CoeffectKind.None -> PrimitiveCoeffect.ResourceSet [] // TODO - do something better
 
 /// Returns the precedence of an expression - we need to wrap sub-expressions in brackets they 
 /// have smaller precedence. This also returns adjustments for the left/right sub-expression.
@@ -166,9 +168,17 @@ module Html =
   and printTyp kind typ (sb:string[]) = 
     match typ with 
     | Type.Comonad(cl, t) ->
+        sb.push("C ")
+        match flattenCoeffects kind cl with
+        | PrimitiveCoeffect.PastValues 0 
+        | PrimitiveCoeffect.ResourceSet [] -> ()
+        | PrimitiveCoeffect.PastValues n -> 
+            sb.push(string n + " ")
+        | PrimitiveCoeffect.ResourceSet coeffs -> 
+            sb.push(" { ")
+            printCoeff kind coeffs sb
+            sb.push(" } ")
         printTyp kind t sb
-        sb.push("@")
-        sb.push("?!?")
 
     | Type.Variable s -> sb.push("&quot;"); sb.push(s)
     | Type.Tuple(ts) ->
