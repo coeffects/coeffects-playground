@@ -22,9 +22,9 @@ open Coeffects.Translation
 
 let translation () =
   let source = """
-let f = 1 in
-let ?z = 3 in 
-f"""
+let h = prev (fun y -> 
+  (fun x -> 1 + prev x) (prev y))
+in h 42"""
 
   //let source = "let ?x = 1 in ?x"  
   let (Parsec.Parser lex) = Lexer.lexer
@@ -32,13 +32,13 @@ f"""
   let tokens' = tokens |> List.filter (function Token.White _ -> false | _ -> true)
   let (Parsec.Parser pars) = Parser.expr ()
   let expr = pars tokens' |> Option.get |> snd
-  let typed = TypeChecker.typeCheck (fun _ _ -> failwith "!") CoeffectKind.ImplicitParams expr
+  let typed = TypeChecker.typeCheck (fun _ _ -> failwith "!") CoeffectKind.PastValues expr
       
   let transle  = 
     translate (Typed((), Expr.Builtin("input", []))) [] typed 
     |> contract
     //|> Expr.mapType (fun () -> Map.empty, Coeffect.Ignore, Type.Func(Coeffect.Ignore, Type.Primitive "!", Type.Primitive "!"))
-    |> TypeChecker.typeCheck (builtins (coeff typed)) CoeffectKind.None
+    |> typeCheck (builtins (coeff typed)) (CoeffectKind.Embedded CoeffectKind.PastValues)
 
   let annotated, ctx = check (Context.empty (builtins (coeff typed)) CoeffectKind.ImplicitParams) transle
   let solved, cequals = solve ctx.TypeConstraints Map.empty []

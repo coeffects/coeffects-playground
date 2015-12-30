@@ -25,7 +25,7 @@ type PrimitiveCoeffect =
 let (|Let|) a x = a, x
 
 /// Turns implicit parameter coeffects into a list of implicit params
-let flattenCoeffects kind c = 
+let rec flattenCoeffects kind c = 
   let rec flattenImplicits c = 
     match c with
     | Coeffect.None -> []
@@ -49,7 +49,7 @@ let flattenCoeffects kind c =
   match kind with
   | CoeffectKind.ImplicitParams -> PrimitiveCoeffect.ResourceSet (flattenImplicits c)
   | CoeffectKind.PastValues -> PrimitiveCoeffect.PastValues (flattenPast c)
-  | CoeffectKind.None -> PrimitiveCoeffect.ResourceSet [] // TODO - do something better
+  | CoeffectKind.Embedded k -> flattenCoeffects k c
 
 /// Returns the precedence of an expression - we need to wrap sub-expressions in brackets they 
 /// have smaller precedence. This also returns adjustments for the left/right sub-expression.
@@ -393,7 +393,7 @@ module MathJax =
   /// Generates a judgement containing (...) in the assumptions if there are any
   let typedTree kind (Typed.Typed(_, e) as te) =
     match e with
-    | Expr.Fun _ | Expr.App _ | Expr.Binary _ | Expr.Let _ ->
+    | Expr.Fun _ | Expr.App _ | Expr.Binary _ | Expr.Let _ | Expr.Prev _ | Expr.Tuple _ ->
         dfrac [ inl "(\\ldots)" ] (array (judgement kind te))
     | _ -> 
         dfrac [ inl "~" ] (array (judgement kind te))

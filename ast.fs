@@ -28,7 +28,7 @@ type Token =
 type CoeffectKind = 
   | ImplicitParams 
   | PastValues
-  | None
+  | Embedded of CoeffectKind
 
 [<RequireQualifiedAccess>]
 type Coeffect = 

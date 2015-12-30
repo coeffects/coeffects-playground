@@ -104,7 +104,7 @@ let rec checkPattern ctx (TypedPat((), pat))=
 let rec check ctx (Typed((), e)) : Typed<Vars * Coeffect * Type> * ResultContext = 
   
   let returnCoeff c = 
-    if ctx.CoeffectKind = CoeffectKind.None then Coeffect.None else c
+    match ctx.CoeffectKind with CoeffectKind.Embedded _ -> Coeffect.None | _ -> c
 
   match e with 
 
@@ -210,8 +210,8 @@ let rec check ctx (Typed((), e)) : Typed<Vars * Coeffect * Type> * ResultContext
 
   | Expr.Let(pat, arg, body) ->
       let earg, carg = check ctx arg
-      let typedPat, ctx = checkPattern ctx pat
-      let ebody, cbody = check ctx body
+      let typedPat, newCtx = checkPattern ctx pat
+      let ebody, cbody = check newCtx body
       let res = Result.merge carg cbody |> Result.constrainTypes [ typ earg, ptyp typedPat ]
       let c = Coeffect.Split(coeff ebody, Coeffect.Seq(coeff ebody, coeff earg))
       Typed((ctx.Variables, returnCoeff c, typ ebody), Expr.Let(typedPat, earg, ebody)), res
@@ -227,13 +227,19 @@ let typeCheck builtins kind expr : Typed<Vars * Coeffect * Type> =
   // for l, r in cequals do printfn "\n  %A\n= %A" l r
   let normalizeCoeffect = 
     match kind with
-    | CoeffectKind.None ->
+    | CoeffectKind.Embedded c ->
+        let equal c1 c2 = 
+          match c with
+          | CoeffectKind.ImplicitParams -> ImplicitParams.evalCoeffect Map.empty c1 = ImplicitParams.evalCoeffect Map.empty c2
+          | CoeffectKind.PastValues -> Dataflow.evalCoeffect Map.empty c1 = Dataflow.evalCoeffect Map.empty c2
+          | _ -> failwith "Wrong embedded coeffect"
+
         let solved = 
           [ for c1, c2 in cequals do
               match c1, c2 with
               | Coeffect.Variable v, Coeffect.Closed o
               | Coeffect.Closed o, Coeffect.Variable v -> yield v, o
-              | l, r when ImplicitParams.evalCoeffect Map.empty l = ImplicitParams.evalCoeffect Map.empty r -> ()
+              | l, r when equal l r -> ()
               | _ -> failwith "Cannot resolve constraint." ] |> Map.ofSeq
               //| l, r -> failwithf "Cannot resolve constraint\n  %A\n= %A" l r ] |> Map.ofSeq
         let normalizeNone c = 

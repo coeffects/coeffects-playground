@@ -78,6 +78,111 @@ in h 42  """.Trim()
   let queueAction(f:unit -> unit) : unit = failwith "!"
 
 
+  type Value =
+    | Unit
+    | Integer of int
+    | ImplicitsComonad of Value * Microsoft.FSharp.Collections.Map<string, Value>
+    | Function of (Value -> Value)
+    | Tuple of Value list
+
+  type EvaluationContext = 
+    { Variables : Microsoft.FSharp.Collections.Map<string, Value> }
+
+  let rec bind value (TypedPat(_, pattern)) vars = 
+    match pattern, value with
+    | Pattern.Var n, v -> Map.add n v vars
+    | Pattern.Tuple pats, Value.Tuple vals when pats.Length = vals.Length ->
+        List.zip pats vals |> List.fold (fun ctx (p, v) -> bind v p ctx) vars
+    | _ -> failwith "Pattern does not match value"        
+
+  let operators = 
+    Map.ofList [ "+", (+); "-", (-); "*", (*); "/", (/); "^", pown ] 
+
+  let restrict (m:Microsoft.FSharp.Collections.Map<string, Value>) s = 
+    Map.ofList [ for v in Set.toList s -> v, Map.find v m ]
+
+  let (|Fail|) s _ = failwith s
+
+  let rec eval ctx (Typed(_, expr)) =
+    match expr with
+
+    | Expr.Binary(op, l, r) ->
+        let op = match operators.TryFind op with Some(o) -> o | _ -> failwith "Unexpected operator"
+        match eval ctx l, eval ctx r with
+        | Value.Integer l, Value.Integer r -> Value.Integer(op l r)
+        | _ -> failwith "Expected two numbers"
+
+    | Expr.Tuple(args) ->
+        Value.Tuple(List.map (eval ctx) args)
+    | Expr.Let(pat, arg, body) ->
+        eval { ctx with Variables = bind (eval ctx arg) pat ctx.Variables } body
+
+    | Expr.App(e1, e2) ->
+        match eval ctx e1, eval ctx e2 with
+        | Value.Function f, v -> f v
+        | _ -> failwith "Expected function"
+
+    | Expr.Fun(pat, body) ->
+        Value.Function(fun v ->
+          eval { ctx with Variables = bind v pat ctx.Variables } body)
+
+    | Expr.Builtin("merge", _) ->
+        Value.Function(fun v ->
+          match v with
+          | Value.Tuple [Value.ImplicitsComonad(v1, d1); Value.ImplicitsComonad(v2, d2)] ->
+              let m = d1 |> Map.toList |> List.fold (fun m (k, v) -> Map.add k v m) d2
+              Value.ImplicitsComonad(Value.Tuple [v1; v2], m)
+          | _ -> failwith "Expected tuple of comonad values")
+
+    | Expr.Builtin("duplicate", [_]) ->
+        Value.Function(fun v ->
+          match v with 
+          | Value.ImplicitsComonad(v, d) -> Value.ImplicitsComonad(Value.Tuple [v; v], d)
+          | _ -> failwith "Expected dictionary with tuple value")
+
+    | Expr.Builtin("counit", _) ->
+        Value.Function(fun v ->
+          match v with
+          | Value.ImplicitsComonad(v, _) -> v 
+          | _ -> failwith "Expected comonad value")
+
+    | Expr.Builtin(("fst" | "snd") as op, _) ->
+        Value.Function(fun v ->
+          match v with
+          | Value.Tuple [v1; v2] -> if op = "fst" then v1 else v2
+          | _ -> failwith "Expected two-element tuple")
+
+    | Expr.Builtin("cobind", [r; s]) ->
+        Value.Function(fun (Value.Function(f) | Fail "Expected function" f) ->
+          Value.Function(fun (Value.ImplicitsComonad(v, d) | Fail "Expected comonad" (v, d)) ->
+            let r, s = Solver.ImplicitParams.evalCoeffect Map.empty r, Solver.ImplicitParams.evalCoeffect Map.empty s
+            let a = f (Value.ImplicitsComonad(v, restrict d r))
+            Value.ImplicitsComonad(a, restrict d s)))
+
+    | Expr.Builtin("letimpl", [Coeffect.ImplicitParam(n, _); _; _]) ->
+        Value.Function(fun (Value.Tuple [Value.ImplicitsComonad(c, d); v] | Fail "Expected tuple with implicit comonad" (c,d,v) ) ->
+          Value.ImplicitsComonad(c, Map.add n v d) )
+   
+    | Expr.Builtin("split", [r; s]) ->
+        Value.Function(fun v ->
+          match v with 
+          | Value.ImplicitsComonad(Value.Tuple [v1; v2], d) ->
+              let r, s = Solver.ImplicitParams.evalCoeffect Map.empty r, Solver.ImplicitParams.evalCoeffect Map.empty s
+              Value.Tuple [Value.ImplicitsComonad(v1, restrict d r); Value.ImplicitsComonad(v1, restrict d s)]
+          | _ -> failwith "Expected dictionary with tuple value")
+
+    | Expr.Builtin("lookup", [Coeffect.ImplicitParam(n, _)]) -> 
+        Value.Function(fun v -> 
+          match v with
+          | ImplicitsComonad(_, d) -> d.[n]
+          | _ -> failwith "Expected dictionary")
+
+    | Expr.Var(v) -> Map.find v ctx.Variables
+    | Expr.Builtin("input", _) -> Map.find "input" ctx.Variables
+    | Expr.Integer n -> Value.Integer n
+    //| e -> failwithf "%A" e
+    | _ -> failwith "Eval failed"
+
   let setup kind prefix = 
     let btn = Globals.document.getElementById(prefix + "-btn") :?> HTMLButtonElement
     let input = Globals.document.getElementById(prefix + "-input") :?> HTMLTextAreaElement
@@ -85,6 +190,8 @@ in h 42  """.Trim()
     let transl = Globals.document.getElementById(prefix + "-transl") :?> HTMLPreElement
     let judgement = Globals.document.getElementById(prefix + "-judgement") :?> HTMLPreElement
     let judgementTemp = Globals.document.getElementById(prefix + "-judgement-temp") :?> HTMLPreElement
+
+    let playground = Globals.document.getElementById(prefix + "-playground") :?> HTMLPreElement
 
     input.value <- source prefix
     btn.addEventListener_click(fun e ->
@@ -112,11 +219,32 @@ in h 42  """.Trim()
       let transle  = 
         Translation.translate (Typed((), Expr.Builtin("input", []))) [] typed 
         |> Translation.contract
-        |> TypeChecker.typeCheck (Translation.builtins (TypeChecker.coeff typed)) CoeffectKind.None 
+        |> TypeChecker.typeCheck (Translation.builtins (TypeChecker.coeff typed)) (CoeffectKind.Embedded kind)
 
       transl.innerHTML <- Html.print (Html.printExpr kind prefix 0 [] transle)
 //*)
-      
+
+      match kind, typed with
+      | CoeffectKind.ImplicitParams, Typed((_, c, _), _) ->
+          let pl = jq(playground)
+          let coeffs = Solver.ImplicitParams.evalCoeffect Map.empty c |> Set.toList
+          let inputs = 
+            [ for c in coeffs ->
+                let input = jq("<input />")
+                pl.append(jq("<p>?" + c + "</p>").append(input)) |> ignore
+                c, input ]
+
+          jq("<button>Run</button>").click(fun c -> 
+            //let input = Value.ImplicitsComonad(Value.Unit, Map.ofList [ "y", Value.Integer(1) ])
+            let input = Value.ImplicitsComonad(Value.Unit, Map.ofList [ for c, i in inputs -> c, Value.Integer(1 * unbox(i._val())) ])
+            let res = eval { Variables = Map.ofSeq ["input", input] } transle
+            match res with 
+            | Value.Integer n -> Globals.window.alert(string n)
+            | _ -> Globals.window.alert("Something weird")
+            obj()).appendTo(pl)
+          |> ignore
+      | _ -> ()
+
       let rec findSubExpression locations (Typed.Typed(_, e) as te) : Typed<Vars * Coeffect * Type> = 
         match locations, e with
         | [], _ -> te
