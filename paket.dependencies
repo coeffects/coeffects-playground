@@ -3,8 +3,7 @@ source http://nuget.org/api/v2
 nuget FAKE
 nuget Suave
 nuget FunScript
-nuget FunScript.TypeScript.Binding.lib
 nuget FunScript.TypeScript.Binding.jquery
-nuget FSharp.Compiler.Service
+nuget FSharp.Formatting
 
 github matthid/Yaaf.FSharp.Scripting src/source/Yaaf.FSharp.Scripting/YaafFSharpScripting.fs

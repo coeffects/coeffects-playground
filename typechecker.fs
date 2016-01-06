@@ -178,17 +178,17 @@ let rec check ctx (Typed((), e)) : Typed<Vars * Coeffect * Type> * ResultContext
 
   | Expr.Fun(pat, body) ->
       // Type check body with context containing `v : 'newTypeVar` for each new variable
-      let typedPat, ctx = checkPattern ctx pat
-      let body, cbody = check ctx body      
+      let typedPat, ctxBody = checkPattern ctx pat
+      let body, cbody = check ctxBody body      
       // Generate coeffect variables `r ^ s` and constrain `r ^ s = bodyCoeffect`
       // and also `r = c1 + .. + cn where ci \in implicitParamsInScope`
-      let cvar1 = Coeffect.Variable(ctx.NewCoeffectVar())
-      let cvar2 = Coeffect.Variable(ctx.NewCoeffectVar())
+      let cvar1 = Coeffect.Variable(ctxBody.NewCoeffectVar())
+      let cvar2 = Coeffect.Variable(ctxBody.NewCoeffectVar())
       let constrs = 
         if ctx.CoeffectKind = CoeffectKind.ImplicitParams then
           // When type-checking implicit params, constrain the implicit parameters on the
           // declaration side to those that are currently in lexical scope
-          let inScope = ctx.ImplicitParams |> Map.toList |> List.fold (fun s (c, t) -> 
+          let inScope = ctxBody.ImplicitParams |> Map.toList |> List.fold (fun s (c, t) -> 
             Coeffect.Split(s, Coeffect.ImplicitParam(c, t))) Coeffect.Ignore
           [ cvar1, inScope ]
         else []

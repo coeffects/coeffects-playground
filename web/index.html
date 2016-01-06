@@ -7,46 +7,323 @@
   <script src="//code.jquery.com/jquery-2.1.4.min.js"></script>
   <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha256-KXn5puMvxCw+dAYznun+drMdG1IFl3agK0p/pqT9KAo= sha512-2e8qq0ETcfWRI4HJBzQiA3UoyFk6tbNyG+qSaIBZLyW9Xf3sWZHN/lxe9fTh1U45DpPf07yj94KsUHHWe4Yk1A==" crossorigin="anonymous"></script>
   <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet" integrity="sha256-7s5uDGW3AHqw6xtJmNNtr+OBRJUlgkNJEo78P4b0yRw= sha512-nNo+yCHEyn0smMxSswnf/OnX6/KwJuZTlNZBjauKhTK0c+zT+q5JOCx0UFhXQ6rJR9jg6Es8gPuD2uZcYDLqSw==" crossorigin="anonymous">
-  <link href='//fonts.googleapis.com/css?family=Inconsolata' rel='stylesheet' type='text/css'>
+  <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet">
   <script src='//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
   <script type="text/x-mathjax-config">
     MathJax.Hub.Config({ TeX: { extensions: ["color.js"] }});
   </script>  
-  <script src="/script.js"></script>
-  <style>
-    .k { color: #0000a0; }
-    .n { color: #008000; }
-    .op { color: #800080; }
-  </style>
+  <link rel="stylesheet" href="style.css" />
+  <script src="interactive.js" type="text/javascript"></script>
+  <script src="tips.js" type="text/javascript"></script>
+  <script src="script.js" type="text/javascript"></script>
 </head>
 <body>
+  <div id="header">
+  <div class="container">
+    <h1>Coeffects: <em>Context-aware programming languages</em></h1>
+  </div>
+  </div>
+  <nav class="navbar" data-spy="affix" data-offset-top="100">
+    <div class="container">
+      <div class="navbar-header">
+       <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#nb" aria-expanded="false">
+         <span class="sr-only">Toggle navigation</span>
+         <span class="icon-bar"></span>
+         <span class="icon-bar"></span>
+         <span class="icon-bar"></span>
+       </button>
+      </div>
+      <div class="collapse navbar-collapse" id="nb">
+       <ul class="nav navbar-nav">
+         <li><a href="#">Home</a></li>
+         <li><a href="#">About</a></li>
+         <li><a href="#">Demos</a></li>
+       </ul>
+       <ul class="nav navbar-nav navbar-right ia-ui-menu">
+         <li class="ia-choice" data-ia-key="ch1" data-ia-ui-kind="box" data-ia-show="" data-ia-hide="motivation theory"><a href="#">Short</a></li>
+         <li class="ia-choice" data-ia-key="ch2" data-ia-ui-kind="box" data-ia-show="motivation" data-ia-hide="theory"><a href="#">Practice</a></li>
+         <li class="ia-choice" data-ia-key="ch3" data-ia-ui-kind="box" data-ia-show="theory" data-ia-hide="motivation"><a href="#">Theory</a></li>
+         <li class="ia-choice" data-ia-key="ch4" data-ia-ui-kind="box" data-ia-show="motivation theory" data-ia-hide=""><a href="#">All</a></li>
+       </ul>
+      </div>
+    </div>
+  </nav>      
+  
+  <div class="below-nav callout">
+  <div class="container">
+  <div class="col-sm-7">
+    
+    >>>>
+    
+    Coeffects are [Tomas Petricek's](http://tomasp.net/academic) PhD research project.
+    They are a programming language abstraction for understanding how programs access the 
+    _context_ or _environment_ in which they execute.
+    
+    The context may be resources on your mobile phone (battery, GPS location or a network printer), 
+    IoT devices in a physical neighborhood or historical stock prices. By understanding the neighborhood
+    or history, a _context-aware_ programming language can catch bugs earlier and run more efficiently.
+    
+    This page is an interactive tutorial that shows a prototype implementation of
+    coeffects in a browser. You can play with two simple context-aware languages, see how the 
+    type checking works and how context-aware programs run.
+
+    This page is also an experiment in presenting programming language research. It is a live
+    environment where you can play with the theory using the power of new media, rather than 
+    staring at a dead pieces of wood (although we [have those too](about.html)).
+    
+    <<<<
+    
+  </div>
+  <div class="col-sm-5">
+    <p>We hide some details by default to keep the tutorial shorter, but you can get them back if you want!
+    </p>
+  
+    <div class="row ia-ui-boxes">
+      <div class="col-md-6">
+        <div class="ia-ui-box ia-choice" data-ia-key="ch1" data-ia-ui-kind="box" data-ia-show="" data-ia-hide="motivation theory">
+          <p><i class="fa fa-thumbs-up"></i><strong>Short is good!</strong> You can always come back.</p></div>
+      </div>
+      <div class="col-md-6">
+        <div class="ia-ui-box ia-choice" data-ia-key="ch2" data-ia-ui-kind="box" data-ia-show="motivation" data-ia-hide="theory">
+          <p><i class="fa fa-industry"></i><strong>I'm practical!</strong> Show me more examples.</p></div>
+      </div>
+    </div>
+    <div class="row ia-ui-boxes">
+      <div class="col-md-6">
+        <div class="ia-ui-box ia-choice" data-ia-key="ch3" data-ia-ui-kind="box" data-ia-show="theory" data-ia-hide="motivation">
+          <p><i class="fa fa-university"></i><strong>Love theory!</strong> Give me all the equations.</p></div>
+      </div>
+      <div class="col-md-6">
+        <div class="ia-ui-box ia-choice" data-ia-key="ch4" data-ia-ui-kind="box" data-ia-show="motivation theory" data-ia-hide="">
+          <p><i class="fa fa-hourglass-start"></i><strong>Show me all!</strong> Time is not an issue.</p></div>
+      </div>
+    </div>
+
+  </div>
+  </div>
+  </div>
+  
   <div style="display:none">
-    \[ 
-      \definecolor{coeff}{RGB}{45,177,93}
-      \definecolor{typ}{RGB}{177,93,43}
-      \definecolor{expr}{RGB}{0,0,0}
-      \definecolor{kvd}{RGB}{0,45,177}
-      \definecolor{num}{RGB}{43,177,93}
+    \[
+      \definecolor{leff}{RGB}{255,107,102}
+      \definecolor{lcoeff}{RGB}{78,206,88}
+      \definecolor{ltyp}{RGB}{255,202,79}
+      \definecolor{lkvd}{RGB}{127,165,255}
     \]
   </div>
+  <div class="body container">
+    <div class="row">
+    <div class="col-sm-4 col-md-3"></div>
+    <div class="col-sm-8 col-md-7 lside">  
+      <h2>
+        What problem are coeffects solving?  
+        <span class="ia-choice ia-ui-circle" data-ia-key="ch8" data-ia-ui-kind="circle" data-ia-show="motivation" data-ia-hide="">
+          <i class="fa fa-industry"></i>
+        </span>
+        <span class="ia-choice ia-ui-circle" data-ia-key="ch9" data-ia-ui-kind="circle" data-ia-show="theory" data-ia-hide="">
+          <i class="fa fa-university"></i>
+        </span>
+      </h2>
 
-  <div class="container">
-    <div class="header clearfix">
-      <nav>
-        <ul class="nav nav-pills pull-right">
-          <li role="presentation" class="active"><a href="#">Home</a></li>
-          <li role="presentation"><a href="#">About</a></li>
-        </ul>
-      </nav>
-      <h3 class="text-muted">Coeffects</h3>
+      >>>>
+      Programming languages evolve to reflect the changes in the computing ecosystem.
+      The next big challenge for programming language designers is building languages that 
+      understand the _context in which programs run_.
+        
+      This challenge is not easy to see. We are so used to work with context using the current
+      cumbersome methods that we do not even _see that there is an issue_. We also do not
+      realize that many programming features related to _context_ can be caputred by the
+      a simple _unified abstraction_. This is what coeffects do!
+
+      <div class="ia-choice ia-ui-bar" data-ia-key="ch8" data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="motivation" data-ia-hide="">
+      
+      What are some examples of context-aware computations?
+      
+       - In cross-platform code, the functions available on different platforms are a
+         context. You can use `#if`. If you get this wrong, your code won't even compile!     
+         
+       - In the [Game of Life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life) or 
+         [weather simulations](https://en.wikipedia.org/wiki/Stencil_code), each cell in a grid
+         accesses neighboring cells. But do you know how many neighbors it needs?
+
+      </div>
+      <<<<      
     </div>
   </div>
+  <div class="row ia" data-ia-key="motivation" data-ia-mode="long">
+    <div class="col-sm-6">
+      >>>>
+          [hide]
+          type Cache() =
+            member x.Contains(key:string) = false
+            member x.Get(key:string) = ""
+            member x.Set(key:string, value:string) = ()
+            
+          open System
+          let cache = new Cache()
+    
+      ### Cross-platformn caching
 
+      Say you need a function that caches values in an in-memory dictionary, or using
+      a local file system when it is available. Using `#if`, you can write:
+
+          let readFromCache key f =
+          
+            // Read value from memory or disk
+            if cache.Contains(key) then 
+              cache.Get(key)
+          #if LOCAL_FILE_SYSTEM
+            elif File.Exists(key) then 
+              File.ReadAllText(key)              
+          #endif
+          
+            // Calculate and cache the value
+            else
+              let result = f()
+              cache.Set(key, result)
+          #if LOCAL_FILE_SYSTEM
+              File.WriteAllText(key, result)
+          #endif    
+              result
+
+      
+      You could refactor the code to make it less ugly, but the issue will not go away.
+      As you need to target more and more platforms, the combinations of `#if` flags grow
+      exponentially and it is hard to know that all configurations even compile.
+      
+      Ideally, the programming language would understand which functions need what capabilities
+      and it would automatically check on which platforms can your code run.      
+      <<<<
+    </div>
+    <div class="col-sm-6">
+      
+      >>>>
+          [hide]
+          let input = [| 0 |]
+          let output = [| 0 |]
+          let cursor = 0
+          
+      ### Stencil computations
+      
+      In stencil computations, we calcualte value for each element of a grid or mesh based on its
+      neighborhood. This is useful in simulations in fluid dynamics or weather modelling. 
+      
+      A simple example is Conway's Game of Life or other cellural automata. The following example
+      implements the [rule 110](https://en.wikipedia.org/wiki/Rule_110) (`arr.[x]` accesses x<sup>th</sup>
+      element of the array and `cursor` is the current position):
+
+          let sum = input.[cursor-1] + 
+            input.[cursor] + input.[cursor+1] 
+            
+          if sum = 2 || (sum = 1 && input.[cursor-1] = 0)
+            then output.[cursor] <- 1 
+            else output.[cursor] <- 0 
+
+      <table id='rule110' style="margin:-10px 20px 5px 20px; overflow:hidden;"></table>
+      <div style="text-align:right;"><button id='rule110btn' class="btn" style="width:60px;margin:0px 20px 5px 0px">Run</button></div>
+      
+      This automata looks at one item on the left and one item on the right. Knowing this is important
+      for correctly handling border conditions. If the compiler knew the access pattern, it could
+      check this and it could also pre-allocate the necessary space and produce more efficient code,
+      especially when compiling for a GPU.
+      <<<<
+      
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-sm-4 col-md-3"></div>
+    <div class="col-sm-8 col-md-7 lside">
+      >>>>
+      <div class="ia-choice ia-ui-bar" data-ia-key="ch9" data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="theory" data-ia-hide="">
+
+      As the name suggests, _coeffects_ are related to _effects_. In fact, they are the 
+      <abbr title="In the category-theoretial sense, but there are interesting subtle issues!">dual<abbr>.
+
+      </div>
+      <<<<
+    </div>
+  </div>  
+  <div class="row ia" data-ia-key="theory" data-ia-mode="long">
+    <div class="col-sm-6">
+      <p>foo</p>
+      <p>foo</p>
+      <p>foo</p>
+      <p>foo</p>
+      <p>foo</p>
+      <p>foo</p>
+      <p>foo</p>
+      <p>foo</p>
+    </div>
+    <div class="col-sm-6">
+      <div class="ia-slides" id="judgement-slides">
+      >>>>
+      <div class="slide">
+      
+      ### Plan langauge
+      
+      $$$
+      x:{\color{lltyp} \text{int}},~ y:{\color{ltyp} \text{int}} \vdash x+y : {\color{ltyp} \text{int}}
+      
+      </div><div class="slide">
+      
+      ### Effect systems
+      
+      $$$
+      hello : {\color{ltyp} \text{string}} \vdash {\color{lkvd} \text{print}}~hello : {\color{ltyp} \text{unit}} {\scriptsize \;\&\;} {\color{leff} \{ \text{io} \} }
+      
+      </div><div class="slide">
+      
+      ### Coeffect systems
+      
+      $$$
+      doc : {\color{ltyp} \text{string}} {\scriptsize \;@\;} {\color{lcoeff} \{ \text{printer} \} } \vdash {\color{lkvd} \text{print}}~doc : {\color{ltyp} \text{unit}}
+      
+      </div><div class="slide">
+      
+      ### Comparison  
+      
+      $$$
+      \Gamma \vdash e : {\color{ltyp} \tau}
+      
+      $$$
+      \Gamma \vdash e : {\color{ltyp} \tau} {\scriptsize \;\&\;} {\color{leff} r}
+      
+      $$$
+      \Gamma {\scriptsize \;@\;} {\color{lcoeff} r} \vdash e : {\color{ltyp} \tau}
+      
+      </div>
+      <<<<
+      </div>  
+    </div>
+  </div>
+  
+  <div class="row">
+    <div class="hidden-sm col-md-1"></div>
+    <div class="col-sm-8 col-md-7 rside">
+
+    >>>>
+    Two coeffect languages
+    ----------------------
+
+    Programming languages need to evolve to reflect the changes in the computing ecosystem.
+    We believe that the next big challenge for programming language designers is building
+    languages that understand the _context in which programs run_.
+      
+    This challenge is not easy to see. We are so used to work with context using current
+    error-prone methods that we do not even _see that there is an issue_. We also do not
+    realize that many programming features related to _context_ can be caputred by the
+    same _unified abstraction_. This is what coeffects do!      
+    <<<<
+    
+    </div>
+  </div>
   <div class="container" id="impl1">
     <div class="row">
       <div class="col-md-6">
         <textarea class="form-control" id="impl1-input" style="font-family:inconsolata; height:150px"></textarea>
         <button class="btn btn-success" id="impl1-btn">Do stuff</button>
+        <div id="impl1-playground">
+        </div>
       </div>
       <div class="col-md-6">
         <pre id="impl1-output">(Output goes here...)</pre>
@@ -58,33 +335,142 @@
         <p id="impl1-judgement"></p>
         <p id="impl1-judgement-temp" style="display:none"></p>
       </div>
-      <div class="col-md-12" id="impl1-playground">
-      </div>
     </div>
   </div>
+</div>
 
-  <div class="container" id="df1">
-    <div class="row">
-      <div class="col-md-6">
-        <textarea class="form-control" id="df1-input" style="font-family:inconsolata; height:150px"></textarea>
-        <button class="btn btn-success" id="df1-btn">Do stuff</button>
-      </div>
-      <div class="col-md-6">
-        <pre id="df1-output">(Output goes here...)</pre>
-        <pre id="df1-transl">(Output goes here...)</pre>
+
+<div class="callout" style="margin-top:200px">
+  <div class="body container">
+    <h2>What problems are coeffects solving?</h2>
+  </div>
+</div>
+<div class="body container">
+        
+
+<div class="row">
+<div class="col-sm-2"></div>
+<div class="col-sm-8 lside">
+
+Coeffect type system
+--------------------
+
+Long scrolling text here... Ovi lispmd idr. Blah goo bar foor foo.  Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo.
+
+
+Long scrolling text here... Ovi lispmd idr. Blah goo bar foor foo.  Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo.
+
+</div>
+</div>
+
+<div class="row">
+<div class="col-sm-2"></div>
+<div class="col-sm-8">
+
+<div style="font-size:16pt;background:black;margin:20px;color:white;padding:40px">
+<div style="width:0;height:0;border-style:solid;border-width:25px 35px 25px 0;border-color: transparent white transparent transparent;">
+</div>
+
+$$$
+\definecolor{eff}{RGB}{255,107,102}
+\definecolor{coeff}{RGB}{78,206,88}
+\definecolor{typ}{RGB}{255,202,79}
+\definecolor{kvd}{RGB}{127,165,255}
+
+<h3>Plan langauge</h3>
+
+$$$
+\dfrac
+  {\Gamma, x:{\color{ltyp} \tau_1} \vdash e : {\color{ltyp} \tau_2}}
+  {\Gamma \vdash {\color{lkvd} \text{fun}}~x \rightarrow e : {\color{ltyp} \tau_1} \rightarrow {\color{ltyp} \tau_2}}
+
+<h3>Effect systems</h3>
+
+$$$
+\dfrac
+  {\Gamma, x:{\color{ltyp} \tau_1} \vdash e : {\color{ltyp} \tau_2 } {\scriptsize \;\&\;} {\color{leff} r} }
+  {\Gamma \vdash {\color{lkvd} \text{fun}}~x \rightarrow e : {\color{ltyp} \tau_1} \xrightarrow{~\color{leff} r~} {\color{ltyp} \tau_2} {\scriptsize \;\&\;} {\color{leff} \emptyset}}
+
+<h3>Coeffect systems</h3>
+
+$$$
+\dfrac
+  {\Gamma, x:{\color{ltyp} \tau_1} {\scriptsize \;@\;} {\color{lcoeff} r\bullet s} \vdash e : {\color{ltyp} \tau_2 } }
+  {\Gamma {\scriptsize \;@\;} {\color{lcoeff} r} \vdash {\color{lkvd} \text{fun}}~x \rightarrow e : {\color{ltyp} \tau_1} \xrightarrow{~\color{lcoeff} s~} {\color{ltyp} \tau_2}}
+
+</div>
+
+</div>
+</div>
+<div class="row">
+<div class="col-sm-2"></div>
+<div class="col-sm-8">
+
+Long scrolling text here... Ovi lispmd idr. Blah goo bar foor foo.  Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo.
+
+
+</div>
+</div>
+<div class="row">
+<div class="col-sm-6">
+
+### Implicit parameters
+
+Long scrolling text here... Ovi lispmd idr. Blah goo bar foor foo.  Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo.
+
+</div>
+<div class="col-sm-6">
+
+### Dataflow programming
+
+Long scrolling text here... Ovi lispmd idr. Blah goo bar foor foo.  Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo.
+
+</div>
+</div>
+<div class="row">
+<div class="col-sm-2"></div>
+<div class="col-sm-8">
+
+Write program in a coeffect language
+
+It gets type checked using coeffect type system
+- We know it is correct!
+
+We translate it into plain language
+and you can run it!
+  
+  
+Unified abstraction!!!  
+  
+  
+Long scrolling text here... Ovi lispmd idr. Blah goo bar foor foo.  Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo.
+  
+  
+</div>
+</div>
+<div class="container" id="df1">
+  <div class="row">
+    <div class="col-md-6">
+      <textarea class="form-control" id="df1-input" style="font-family:inconsolata; height:150px"></textarea>
+      <button class="btn btn-success" id="df1-btn">Do stuff</button>
+      <div id="df1-playground">
       </div>
     </div>
-    <div class="row">
-      <div class="col-md-12">
-        <p id="df1-judgement"></p>
-        <p id="df1-judgement-temp" style="display:none"></p>
-      </div>
-    </div>
-    <div class="row">
-      <div class="col-md-12" id="df1-playground">
-      </div>
+    <div class="col-md-6">
+      <pre id="df1-output">(Output goes here...)</pre>
+      <pre id="df1-transl">(Output goes here...)</pre>
     </div>
   </div>
+  <div class="row">
+    <div class="col-md-12">
+      <p id="df1-judgement"></p>
+      <p id="df1-judgement-temp" style="display:none"></p>
+    </div>
+  </div>
+</div>
 
+<<<<
+  
+</div>
 </body>
 </html>

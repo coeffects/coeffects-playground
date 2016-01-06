@@ -123,6 +123,7 @@ let builtins inputCoeffect (ctx:TypeChecker.InputContext) (n, c) =
   | "prev", [r; r'] ->
       let a = tvar() 
       C r a --> C r' a
+
   | "merge", [r; s] -> 
       let a, b = tvar(), tvar()
       C r a * C s b --> C (r ^^ s) (a * b)
@@ -138,6 +139,7 @@ let builtins inputCoeffect (ctx:TypeChecker.InputContext) (n, c) =
   | "counit", [Coeffect.Use | Coeffect.Past 0] ->
       let a = tvar()
       C Coeffect.Use a --> a
+
   | "input", [] ->
       C inputCoeffect (Type.Primitive "unit")
   | "fst", [] ->
