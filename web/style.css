@@ -190,8 +190,8 @@ nav.affix .ia-ui-menu li {
   width:220px;
   text-align:right;
 }
-.body .lside, .body .rside { 
-  margin-top:10px;
+.body .new-section {
+  margin-top:20px;
 }
 .body h3 {
   font: 17pt Kreon,'Times New Roman',times,serif;
@@ -201,16 +201,27 @@ nav.affix .ia-ui-menu li {
   margin:0px 0px 10px 0px;
   font: 13pt 'PT Sans',verdana,sans-serif;
 }
-
-.body .ia-ui-bar {
+.body strong {
+  float:right;
+  width:250px;
+  margin:0px -200px 0px 0px;
+}
+.body .ia-ui-bar-left {
   border-left:10px solid white;
   padding-left:15px;
   margin-left:-25px;
   cursor:pointer;
 }
+.body .ia-ui-bar-right {
+  border-right:10px solid white;
+  padding-right:15px;
+  margin-right:-25px;
+  cursor:pointer;
+}
 
 .body .ia-ui-circle { 
   width:30px;
+  text-align:left;
   padding:5px 5px 5px 7px;
   border-radius:15px;
   height:30px;
@@ -218,6 +229,7 @@ nav.affix .ia-ui-menu li {
   color:white;
   font-size:12pt;
   margin:15px 0px 0px 0px;
+  cursor:pointer;
 }
 
 .btn { background:black; color:white; }
@@ -245,6 +257,11 @@ nav.affix .ia-ui-menu li {
 .ia-slides .slide {
   display:none;
 }
+
+.ia-slides .slide p {
+  font: 13pt 'PT Sans',verdana,sans-serif;
+}
+
 .ia-slides .larrow {
   width:0;
   height:0;

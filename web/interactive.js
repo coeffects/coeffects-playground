@@ -150,7 +150,10 @@ $(function() {
   
   $(window).resize(function() {
     $(".ia").each(function() { 
-      $(this).css("max-height", "1000px");
+      if (states[$(this).data("ia-key")])
+        $(this).css("max-height", "1000px");
+      else
+        $(this).data("last-height", 1000);        
     });
   });
 })

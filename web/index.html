@@ -113,8 +113,8 @@
   </div>
   <div class="body container">
     <div class="row">
-    <div class="col-sm-4 col-md-3"></div>
-    <div class="col-sm-8 col-md-7 lside">  
+    <div class="hidden-sm col-md-1"></div>
+    <div class="col-sm-8 col-md-7 rside">
       <h2>
         What problem are coeffects solving?  
         <span class="ia-choice ia-ui-circle" data-ia-key="ch8" data-ia-ui-kind="circle" data-ia-show="motivation" data-ia-hide="">
@@ -135,7 +135,7 @@
       realize that many programming features related to _context_ can be caputred by the
       a simple _unified abstraction_. This is what coeffects do!
 
-      <div class="ia-choice ia-ui-bar" data-ia-key="ch8" data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="motivation" data-ia-hide="">
+      <div class="ia-choice ia-ui-bar-left" data-ia-key="ch8" data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="motivation" data-ia-hide="">
       
       What are some examples of context-aware computations?
       
@@ -215,7 +215,8 @@
           let sum = input.[cursor-1] + 
             input.[cursor] + input.[cursor+1] 
             
-          if sum = 2 || (sum = 1 && input.[cursor-1] = 0)
+          if sum = 2 || (sum = 1 && 
+              input.[cursor-1] = 0)
             then output.[cursor] <- 1 
             else output.[cursor] <- 0 
 
@@ -230,76 +231,130 @@
       
     </div>
   </div>
-  <div class="row">
-    <div class="col-sm-4 col-md-3"></div>
-    <div class="col-sm-8 col-md-7 lside">
-      >>>>
-      <div class="ia-choice ia-ui-bar" data-ia-key="ch9" data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="theory" data-ia-hide="">
-
-      As the name suggests, _coeffects_ are related to _effects_. In fact, they are the 
-      <abbr title="In the category-theoretial sense, but there are interesting subtle issues!">dual<abbr>.
-
-      </div>
-      <<<<
-    </div>
-  </div>  
-  <div class="row ia" data-ia-key="theory" data-ia-mode="long">
-    <div class="col-sm-6">
-      <p>foo</p>
-      <p>foo</p>
-      <p>foo</p>
-      <p>foo</p>
-      <p>foo</p>
-      <p>foo</p>
-      <p>foo</p>
-      <p>foo</p>
-    </div>
-    <div class="col-sm-6">
+  <div class="row new-section">
+    <div class="col-md-7">
       <div class="ia-slides" id="judgement-slides">
       >>>>
       <div class="slide">
       
-      ### Plan langauge
+      ### Simple type systems
+      
+      To understand effects and coeffects, let's look at how their type systems work. 
+      In langauges like F#, the following holds:
       
       $$$
-      x:{\color{lltyp} \text{int}},~ y:{\color{ltyp} \text{int}} \vdash x+y : {\color{ltyp} \text{int}}
+      x:{\color{ltyp} \text{int}},~ y:{\color{ltyp} \text{int}} \vdash x+y : {\color{ltyp} \text{int}}
       
+      This says that in a _context_ with variablex $x$ and $y$ of type $\color{ltyp}\text{int}$, the
+      type of expression $x+y$ is also $\color{ltyp}\text{int}$. The context on the left of $\vdash$
+      is important! If the variables $x$ and $y$ had incompatible types, this would not be well-typed!
+            
       </div><div class="slide">
       
       ### Effect systems
       
+      The type of expressions with side-effect is $\color{ltyp}\text{unit}$, which does not tell 
+      us very much! Effect systems add one more component:
+      
       $$$
       hello : {\color{ltyp} \text{string}} \vdash {\color{lkvd} \text{print}}~hello : {\color{ltyp} \text{unit}} {\scriptsize \;\&\;} {\color{leff} \{ \text{io} \} }
+      
+      Effect systems understand built-in functions like ${\color{lkvd} \text{print}}$ and they infer
+      not just the type of an expression, but also an _effect_. Here ${\color{leff} \{ \text{io} \} }$
+      means that the expression requires I/O access but not, for example, direct access to mutable memory.
       
       </div><div class="slide">
       
       ### Coeffect systems
       
+      Coeffects add an annotation to the _context_ of an expression. For example, checking whether we
+      missed a deadline returns $\color{ltyp} \text{bool}$ and requires a set of resources
+      $\color{lcoeff} \{ \text{clock} \}$:
+      
       $$$
-      doc : {\color{ltyp} \text{string}} {\scriptsize \;@\;} {\color{lcoeff} \{ \text{printer} \} } \vdash {\color{lkvd} \text{print}}~doc : {\color{ltyp} \text{unit}}
+      deadline : {\color{ltyp} \text{time}} {\scriptsize \;@\;} {\color{lcoeff} \{ \text{clock} \} } 
+        \vdash {\color{lkvd} \text{now}} \geq deadline : {\color{ltyp} \text{bool}}
+      
+      Coeffects can do more though. We can add requirements to the whole context (as here), but 
+      also to individual variables. We will do this later for checking dataflow computations.
       
       </div><div class="slide">
       
-      ### Comparison  
+      ### Type systems side-by-side
       
+      <table>
+      <tr><td style="padding-right:20px">
+        
       $$$
       \Gamma \vdash e : {\color{ltyp} \tau}
+
+      </td><td>
+        
+      In standard type systems, we say that given variables in $\Gamma$, 
+      an expression $e$ has a type ${\color{ltyp} \tau}$:
+      
+      </td></tr><tr><td style="padding-right:20px">
       
       $$$
       \Gamma \vdash e : {\color{ltyp} \tau} {\scriptsize \;\&\;} {\color{leff} r}
       
+      </td><td>
+      
+      Effect systems add annotation to the result. Given variables in $\Gamma$, 
+      an expression $e$ has a type ${\color{ltyp} \tau}$ and an _effect_ ${\color{leff} r}$:
+      
+      </td></tr><tr><td style="padding-right:20px">
+    
       $$$
       \Gamma {\scriptsize \;@\;} {\color{lcoeff} r} \vdash e : {\color{ltyp} \tau}
       
+      </td><td>
+    
+      Coeffect systems say more about the context. Given a variables in $\Gamma$
+      and additioonal context ${\color{lcoeff} r}$ an expression $e$ has a type ${\color{ltyp} \tau}$:
+      
+      </td></tr></table>      
       </div>
       <<<<
       </div>  
     </div>
+    <div class="col-md-5">
+      >>>>
+      <div class="ia-choice ia-ui-bar-right" data-ia-key="ch9" data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="theory" data-ia-hide="">
+
+      As the name suggests, _coeffects_ are the <abbr title="In the category-theoretial sense, but there are interesting subtle issues!">dual</abbr> 
+      of _effects_. Effects represent what your program _does to the world_ while coeffects track 
+      what your program _requires from the world_. 
+      
+      For example, writing to a console is an I/O effect, but if your program reads the current time, 
+      it is a coeffect. The environment has to provide a clock. 
+      
+      One difference between effects and coeffects is that coeffects can be satisfied in multiple 
+      different ways. If the device visitng your client/server application does not have clock, 
+      the coeffect can use clock available from the server.
+      
+      You can see the duality of effects and coeffects when you look at their _type systems_, but
+      it also affects the _semantics_. That is, how context-aware programs run.
+      
+      </div>
+      <<<<
+    </div>
   </div>
   
-  <div class="row">
+  <div class="row ia" data-ia-key="theory" data-ia-mode="long">
     <div class="hidden-sm col-md-1"></div>
     <div class="col-sm-8 col-md-7 rside">
+      
+      It is not just two different ways of writing - flat and structural coeffects.
+      
+      Comonads
+      
+    </div>
+  </div>  
+  
+  <div class="row new-section">
+    <div class="col-sm-4 col-md-3"></div>
+    <div class="col-sm-8 col-md-7 lside">  
 
     >>>>
     Two coeffect languages
