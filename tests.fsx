@@ -20,6 +20,76 @@ open Coeffects.TypeChecker
 open Coeffects.Solver
 open Coeffects.Translation
 
+
+let source = "fun x -> (fun y -> prev y) (prev ((prev x) + x))"
+let (Parsec.Parser lex) = Lexer.lexer
+let tokens = lex (List.ofArray (source.ToCharArray())) |> Option.get |> snd
+let tokens' = tokens |> List.filter (function Token.White _ -> false | _ -> true)
+let (Parsec.Parser pars) = Parser.expr ()
+let expr = pars tokens' |> Option.get |> snd
+
+    
+
+let typ (Typed((_, t), _)) = t
+
+let rec check ctx (Typed((), e)) : Typed<CoeffVars * Type> * ResultContext = 
+  match e with
+  | Expr.Var(name) ->
+      let typ = 
+        match ctx.Variables.TryFind name with
+        | Some typ -> typ
+        | None -> failwith ("Variable '" + name + "' not in scope.")
+      Typed((CoeffVars.var name Coeffect.Use typ, typ), Expr.Var name), Result.empty
+
+
+  | Expr.Fun(TypedPat(_, Pattern.Var v) as pat, body) ->
+      // Type check body with context containing `v : 'newTypeVar` for each new variable
+      // let typedPat, ctxBody = checkPattern ctx pat
+      let varTyp = Type.Variable(ctx.NewTypeVar())
+      let ctxBody = Context.addVar v varTyp ctx
+      let typedPat = TypedPat((CoeffVars.empty, varTyp), Pattern.Var v)
+
+      let body, cbody = check ctxBody body      
+      let (varCoeff, varTyp), cvs = CoeffVars.remove v (cvars body)
+
+      // Return type is `varTyp -{ s }-> typOfBody` with context annotated with `r`
+      Typed((cvs, Type.Func(varCoeff, varTyp, typ body)), Expr.Fun(typedPat, body)), cbody
+
+  | Expr.App(l, r) ->
+      let el, cl = check ctx l
+      let er, cr = check ctx r
+      // Generate type constraint for `typ el = typ er -{ t }-> newTypVar`
+      let tout = Type.Variable(ctx.NewTypeVar())
+      let cvar = Coeffect.Variable(ctx.NewCoeffectVar())
+      let res = Result.merge cl cr |> Result.constrainTypes [ typ el, Type.Func(cvar, typ er, tout) ]
+      // Resulting coeffect is `r + (s * t)` where r = coeff el and s = coeff er
+      //let c = Coeffect.Split(coeff el, Coeffect.Seq(cvar, coeff er))
+      let cvs = CoeffVars.merge (cvars el) (cvars er |> CoeffVars.mapCoeff (fun c -> Coeffect.Seq(cvar, c)))
+      Typed((cvs, tout), Expr.App(el, er)), res
+
+  | Expr.Binary(op, l, r) ->
+      let el, cl = check ctx l
+      let er, cr = check ctx r
+      let cc = [ typ el, Type.Primitive "int"; typ er, Type.Primitive "int" ]
+      let res = Result.merge cl cr |> Result.constrainTypes cc
+      //let c = Coeffect.Split(coeff el, coeff er)
+      let cvs = CoeffVars.merge (cvars el) (cvars er)
+      Typed((cvs, Type.Primitive "int"), Expr.Binary(op, el, er)), res
+
+
+let annotated, ctx = check (Context.empty  (fun _ _ -> failwith "?") CoeffectKind.PastValues) expr
+let solved, cequals = solve ctx.TypeConstraints Map.empty []
+
+let normalizeCoeffect c = c
+
+annotated |> Expr.mapType (fun (cs, t) -> 
+  cs |> Map.map (fun _ (c, t) -> normalizeType normalizeCoeffect solved t),
+  normalizeType normalizeCoeffect solved t)
+
+//let typed = TypeChecker.typeCheck (fun _ _ -> failwith "!") CoeffectKind.PastValues expr
+
+
+(*
 let translation () =
   let source = """
 let h = prev (fun y -> 
@@ -131,3 +201,4 @@ h 0     """.Trim()
 
   TypeChecker.typeCheck CoeffectKind.ImplicitParams translated
   ()
+*)

@@ -189,9 +189,13 @@ module Html =
           printTyp kind t sb |> ignore
         sb.push(")")
         
-    | Type.Func(c, t1, t2) -> 
+    | Type.Func((cf, cs), t1, t2) -> 
         sb.push("(")
         printTyp kind t1 sb
+        let c = 
+          if cf = Coeffect.None then cs 
+          elif cs = Coeffect.None then cf
+          else failwith "Pretty printer cannot do mixed systems"
         match flattenCoeffects kind c with
         | PrimitiveCoeffect.PastValues 0 
         | PrimitiveCoeffect.ResourceSet [] -> 
@@ -334,9 +338,9 @@ module MathJax =
     |> close
 
   /// Format the free-variable context
-  let rec vars kind (vars:Vars) (ar:string[]) = 
+  let rec vars kind (vars:CoeffVars) (ar:string[]) = 
     let mutable first = true
-    for v, t in Map.toList vars do
+    for v, (_, t) in Map.toList vars do
       if first then first <- false
       else ar.push(", ")
       ar.push(v)
@@ -347,11 +351,11 @@ module MathJax =
   /// Format the coeffect (either set of implicit parameters or a number)
   and coeff kind short c (ar:string[]) =
     ar.push("{\\color{coeff} ")
-    let mutable first = true
     match flattenCoeffects kind c with
     | PrimitiveCoeffect.PastValues n ->
         ar.push(string n)
     | PrimitiveCoeffect.ResourceSet impls ->
+      let mutable first = true
       for v, t in impls do
         if first then first <- false
         else ar.push(", ")
@@ -369,16 +373,34 @@ module MathJax =
         ar |> inl "C^{" |> coeff kind true c |> inl "}" |> ignore
     | Type.Tuple(ts) ->
         ar |> inl "(" |> sep (inl "\\ast") (List.map (typ kind colored) ts) |> inl ")" |> ignore
-    | Type.Func(c, t1, t2) -> 
+    | Type.Func((cf, cs), t1, t2) -> 
+        let c = 
+          if cf = Coeffect.None then cs 
+          elif cs = Coeffect.None then cf
+          else failwith "Pretty printer cannot do mixed systems"
         ar |> typ kind colored t1 |> inl "\\xrightarrow{" |> coeff kind true c 
            |> inl "}" |> typ kind colored t2 |> ignore
     | Type.Primitive(s) -> ar |> inl ("\\text{" + s + "}") |> ignore
     | Type.Variable(s) -> ar |> inl ("`" + s) |> ignore
     if colored then ar |> inl "}" else ar
 
+  /// Format flat or structural coeffects in the typing judgement (before \vdash)
+  let coeffs kind cvars c ar =
+    if c <> Coeffect.None then coeff kind false c ar
+    else
+      let mutable first = true
+      if not (Map.isEmpty cvars) then
+        ar.push("\\langle")
+        for _, (c, _) in Map.toList cvars do
+          if first then first <- false
+          else ar.push(",")
+          coeff kind false c ar |> ignore
+        ar.push("\\rangle")
+      ar      
+
   /// Format a typing judgement of the form $\Gamma @ c \vdash e : \tau$
   let judgement kind (Typed.Typed((v, c, t), e) as te) (ar:string[]) =
-    ar |> vars kind v |> inl "\\,{\\small @}\\," |> coeff kind false c 
+    ar |> vars kind v |> inl "\\,{\\small @}\\," |> coeffs kind v c 
        |> inl "\\vdash " |> expr 0 te |> inl ":" |> typ kind true t
 
   /// Wraps the specified formatting function in LaTeX array

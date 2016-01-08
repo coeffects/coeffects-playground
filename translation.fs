@@ -41,7 +41,7 @@ let rec translate ctx vars (Typed((v,c,t), e)) =
       !Expr.Builtin("lookup", [Coeffect.ImplicitParam(v, t)]) |@| ctx
 
   | Expr.App(e1, e2) ->
-      let r, s, t = coeff e1, coeff e2, match typ e1 with Type.Func(c, _, _) -> c | _ -> failwith "Not a function!"        
+      let r, s, t = coeff e1, coeff e2, match typ e1 with Type.Func((c, _), _, _) -> c | _ -> failwith "Not a function!"        
       let ctxSplit = !Expr.Builtin("split", [r; s ** t]) |@| (!Expr.Builtin("duplicate", [r ++ (s ** t)]) |@| ctx)
       let fn = !Expr.Fun(!!Pattern.Var("ctx"), translate (!Expr.Var("ctx")) vars e2)
       let cobind = !Expr.Builtin("cobind", [s; t]) |@| fn |@| !Expr.Var("ctx2")
@@ -49,7 +49,7 @@ let rec translate ctx vars (Typed((v,c,t), e)) =
       !Expr.Let(!!Pattern.Tuple([!!Pattern.Var("ctx1"); !!Pattern.Var("ctx2")]), ctxSplit, body)
 
   | Expr.Fun(TypedPat(_, Pattern.Var v), e) ->
-      let r, s = c, match t with Type.Func(c, _, _) -> c | _ -> failwith "Not a function!"
+      let r, s = c, match t with Type.Func((c, _), _, _) -> c | _ -> failwith "Not a function!"
       let merged = Expr.App(!Expr.Builtin("merge", [s; r]), !Expr.Tuple([!Expr.Var(v); ctx]))
       !Expr.Fun(!!Pattern.Var(v), translate (!merged) (v::vars) e)
 
@@ -111,7 +111,7 @@ let rec contract (Typed(t, e)) =
 let builtins inputCoeffect (ctx:TypeChecker.InputContext) (n, c) = 
   let cvar() = Coeffect.Variable(ctx.NewCoeffectVar())
   let tvar() = Type.Variable(ctx.NewTypeVar())
-  let ( --> ) l r = Type.Func(Coeffect.Use, l, r)
+  let ( --> ) l r = Type.Func((Coeffect.Use, Coeffect.None), l, r)
   let ( * ) l r = Type.Tuple [l; r]
   let C c t = Type.Comonad(c, t)
   match n, c with

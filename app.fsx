@@ -1,4 +1,6 @@
-﻿#load "packages/FSharp.Formatting/FSharp.Formatting.fsx"
+﻿#if INTERACTIVE
+#load "packages/FSharp.Formatting/FSharp.Formatting.fsx"
+#endif
 #r "packages/Suave/lib/net40/Suave.dll"
 #r "packages/FunScript/lib/net40/FunScript.dll"
 #r "packages/FunScript/lib/net40/FunScript.Interop.dll"
@@ -65,11 +67,16 @@ let f =
   (fun a -> ?x + ?y) in
 let ?x = 2 in
 let ?z = 3 in f 0""".Trim()
-    else 
+    elif prefix = "df1" then
       """
 fun y -> 
   let f = (fun x -> prev x) in 
   f y    """.Trim()
+    else
+      """
+fun y -> prev(fun x -> 
+  (prev x + prev y))    """.Trim()
+
 
 
   let filter f xs = List.foldBack (fun x xs -> if f x then x::xs else xs) xs [] 
@@ -80,7 +87,7 @@ fun y ->
   [<JSEmitInline("MathJax.Hub.Queue({0});")>]
   let queueAction(f:unit -> unit) : unit = failwith "!"
 
-  let setup kind prefix = 
+  let setup kind mode prefix = 
     let btn = Globals.document.getElementById(prefix + "-btn") :?> HTMLButtonElement
     let input = Globals.document.getElementById(prefix + "-input") :?> HTMLTextAreaElement
     let output = Globals.document.getElementById(prefix + "-output") :?> HTMLPreElement
@@ -101,77 +108,78 @@ fun y ->
       let tokens = tokens |> filter (function Token.White _ -> false | _ -> true)
       let (Parsec.Parser pars) = Parser.expr ()
       let expr = pars tokens |> Option.get |> snd
-      let typed = TypeChecker.typeCheck (fun _ _ -> failwith "!") kind expr
+      let typed = TypeChecker.typeCheck (fun _ _ -> failwith "!") kind mode expr
       output.innerHTML <- Html.print (Html.printExpr kind prefix 0 [] typed)
-      
-      let transle  = 
-        Translation.translate (Typed((), Expr.Builtin("input", []))) [] typed 
-        |> Translation.contract
-        |> TypeChecker.typeCheck (Translation.builtins (TypeChecker.coeff typed)) (CoeffectKind.Embedded kind)
 
-      transl.innerHTML <- Html.print (Html.printExpr kind prefix 0 [] transle)
+      if mode = CoeffectMode.Flat then      
+        let transle  = 
+          Translation.translate (Typed((), Expr.Builtin("input", []))) [] typed 
+          |> Translation.contract
+          |> TypeChecker.typeCheck (Translation.builtins (TypeChecker.coeff typed)) (CoeffectKind.Embedded kind) CoeffectMode.None
 
-      let el s (attrs:list<string*string>) children = 
-        let jp = attrs |> List.fold (fun (j:JQuery) (k, v) -> j.attr(k, v)) (jq("<" + s + " />"))
-        children |> List.fold (fun (p:JQuery) (c:JQuery) -> p.append(c)) jp
-      let css (attrs:list<string*string>) (j:JQuery) = 
-        attrs |> List.fold (fun (j:JQuery) (k, v) -> j.css(k, v)) j
-      let html (s:string) (j:JQuery) = j.html(s)
-      let appendTo (p:JQuery) (j:JQuery) = j.appendTo(p)
-      let click (f:unit -> unit) (j:JQuery) = j.click(fun _ -> f(); obj())
+        transl.innerHTML <- Html.print (Html.printExpr kind prefix 0 [] transle)
 
-      playground.innerHTML <- "";
-      match kind, typed with
-      | CoeffectKind.PastValues, Typed((_, Coeffect.Past m, Type.Func(Coeffect.Past n, _, _)), _) ->
-          let pl = jq(playground)
-          let pastValues = [ for i in 0 .. n -> i, el "input" [("type","text"); ("class","form-control")] [] |> css ["width","50px"] ]
-          el "form" [("class","form-inline")] [
-            el "div" [("class","input-group")] [
-              yield el "div" [("class","input-group-addon")] [] |> html "input = ["
-              for i, pv in pastValues do
-                if i <> 0 then 
-                  yield el "div" [("class","input-group-addon")] [] |> css ["padding","6px 8px 6px 4px"] |> html ";"
-                yield pv 
-              yield el "div" [("class","input-group-addon")] [] |> html "]" ]
-          ] |> appendTo pl |> ignore
-          el "button" [ ("class", "btn btn-success") ] [] 
-          |> html "Run"
-          |> click (fun () ->
-            let input = Value.ListComonad [ for _ in 0 .. m -> Value.Unit ]
-            let arg = Value.ListComonad [ for _, i in pastValues -> Value.Integer(1 * unbox(i._val())) ]
-            let res = 
-              let (Value.Function f | Fail "Expected function!" f) = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle
-              f arg
-            match res with 
-            | Value.Integer n -> Globals.window.alert(string n)
-            | _ -> Globals.window.alert("Something weird") )
-          |> appendTo pl |> ignore
+        let el s (attrs:list<string*string>) children = 
+          let jp = attrs |> List.fold (fun (j:JQuery) (k, v) -> j.attr(k, v)) (jq("<" + s + " />"))
+          children |> List.fold (fun (p:JQuery) (c:JQuery) -> p.append(c)) jp
+        let css (attrs:list<string*string>) (j:JQuery) = 
+          attrs |> List.fold (fun (j:JQuery) (k, v) -> j.css(k, v)) j
+        let html (s:string) (j:JQuery) = j.html(s)
+        let appendTo (p:JQuery) (j:JQuery) = j.appendTo(p)
+        let click (f:unit -> unit) (j:JQuery) = j.click(fun _ -> f(); obj())
 
-      | CoeffectKind.ImplicitParams, Typed((_, c, _), _) ->
-          let coeffs = Solver.ImplicitParams.evalCoeffect Map.empty c |> Set.toList
-          let pl = jq(playground)
-          let fg = el "div" [ ("class","form-group") ] [] |> appendTo pl
-          let inputs = 
-            [ for c in coeffs -> 
-                let input = el "input" [ ("type","text"); ("class","form-control") ] []
-                let div = el "div" [ ("class","input-group-addon") ] [] |> css [ ("min-width", "70px") ] |> html ("?" + c + " = ")
-                el "div" [ ("class","input-group") ] [ div; input ] |> css [ ("margin-bottom", "10px") ] |> appendTo fg |> ignore
-                c, input ]
-
-          el "div" [("class","form-group")] [
+        playground.innerHTML <- "";
+        match kind, typed with
+        | CoeffectKind.PastValues, Typed((_, Coeffect.Past m, Type.Func((Coeffect.Past n, _), _, _)), _) ->
+            let pl = jq(playground)
+            let pastValues = [ for i in 0 .. n -> i, el "input" [("type","text"); ("class","form-control")] [] |> css ["width","50px"] ]
+            el "form" [("class","form-inline")] [
+              el "div" [("class","input-group")] [
+                yield el "div" [("class","input-group-addon")] [] |> html "input = ["
+                for i, pv in pastValues do
+                  if i <> 0 then 
+                    yield el "div" [("class","input-group-addon")] [] |> css ["padding","6px 8px 6px 4px"] |> html ";"
+                  yield pv 
+                yield el "div" [("class","input-group-addon")] [] |> html "]" ]
+            ] |> appendTo pl |> ignore
             el "button" [ ("class", "btn btn-success") ] [] 
             |> html "Run"
             |> click (fun () ->
-              let input = Value.ImplicitsComonad(Value.Unit, Map.ofList [ for c, i in inputs -> c, Value.Integer(1 * unbox(i._val())) ])
-              let res = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle
+              let input = Value.ListComonad [ for _ in 0 .. m -> Value.Unit ]
+              let arg = Value.ListComonad [ for _, i in pastValues -> Value.Integer(1 * unbox(i._val())) ]
+              let res = 
+                let (Value.Function f | Fail "Expected function!" f) = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle
+                f arg
               match res with 
               | Value.Integer n -> Globals.window.alert(string n)
-              | _ -> Globals.window.alert("Something weird")
-            )
-          ] |> appendTo pl |> ignore
-      | _ -> ()
+              | _ -> Globals.window.alert("Something weird") )
+            |> appendTo pl |> ignore
 
-      let rec findSubExpression locations (Typed.Typed(_, e) as te) : Typed<Vars * Coeffect * Type> = 
+        | CoeffectKind.ImplicitParams, Typed((_, c, _), _) ->
+            let coeffs = Solver.ImplicitParams.evalCoeffect Map.empty c |> Set.toList
+            let pl = jq(playground)
+            let fg = el "div" [ ("class","form-group") ] [] |> appendTo pl
+            let inputs = 
+              [ for c in coeffs -> 
+                  let input = el "input" [ ("type","text"); ("class","form-control") ] []
+                  let div = el "div" [ ("class","input-group-addon") ] [] |> css [ ("min-width", "70px") ] |> html ("?" + c + " = ")
+                  el "div" [ ("class","input-group") ] [ div; input ] |> css [ ("margin-bottom", "10px") ] |> appendTo fg |> ignore
+                  c, input ]
+
+            el "div" [("class","form-group")] [
+              el "button" [ ("class", "btn btn-success") ] [] 
+              |> html "Run"
+              |> click (fun () ->
+                let input = Value.ImplicitsComonad(Value.Unit, Map.ofList [ for c, i in inputs -> c, Value.Integer(1 * unbox(i._val())) ])
+                let res = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle
+                match res with 
+                | Value.Integer n -> Globals.window.alert(string n)
+                | _ -> Globals.window.alert("Something weird")
+              )
+            ] |> appendTo pl |> ignore
+        | _ -> ()
+
+      let rec findSubExpression locations (Typed.Typed(_, e) as te) : Typed<CoeffVars * Coeffect * Type> = 
         match locations, e with
         | [], _ -> te
         | 0::t, (Expr.Let(_, e, _) | Expr.App(e, _) | Expr.Binary(_, e, _) | Expr.Fun(_, e) | Expr.Prev(e) )
@@ -236,8 +244,9 @@ fun y ->
     )
 
   let main () =
-    setup CoeffectKind.ImplicitParams "impl1"
-    setup CoeffectKind.PastValues "df1"
+    setup CoeffectKind.ImplicitParams CoeffectMode.Flat "impl1"
+    setup CoeffectKind.PastValues CoeffectMode.Flat "df1"
+    setup CoeffectKind.PastValues CoeffectMode.Structural "df2"
 
 let script = 
   translate <@ Client.main() @>

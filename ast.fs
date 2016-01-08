@@ -30,6 +30,11 @@ type CoeffectKind =
   | PastValues
   | Embedded of CoeffectKind
 
+type CoeffectMode =
+  | None = 0
+  | Flat = 1
+  | Structural = 2
+
 [<RequireQualifiedAccess>]
 type Coeffect = 
   // Flat coeffect algebra
@@ -48,7 +53,7 @@ type Coeffect =
 and [<RequireQualifiedAccess>] Type = 
   | Variable of string
   | Primitive of string
-  | Func of Coeffect * Type * Type
+  | Func of (Coeffect * Coeffect) * Type * Type
   | Tuple of list<Type>
   // Translation target langauge-only
   | Comonad of Coeffect * Type
@@ -86,6 +91,9 @@ and Typed<'T> =
 
 /// Types of variables in the context
 type Vars = Map<string, Type>
+
+/// Collected variables with structural coeffect information
+type CoeffVars = Map<string, Coeffect * Type>
 
 // ------------------------------------------------------------------------------------------------
 // Helper fucntions for working with the AST

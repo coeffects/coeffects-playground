@@ -18,9 +18,9 @@ let rec solve constraints assigns cequals =
       | Some(found) -> solve ((other, found)::rest) assigns cequals
       | None -> solve rest (Map.add v other assigns) cequals
   | (l, r)::rest when l = r -> solve rest assigns cequals
-  | (Type.Func(c1, l1, r1), Type.Func(c2, l2, r2))::rest ->
+  | (Type.Func((cf1,cs1), l1, r1), Type.Func((cf2,cs2), l2, r2))::rest ->
       //printfn "FUNC: %A\n  = %A" (Type.Func(c1, l1, r1)) (Type.Func(c2, l2, r2))
-      solve ((l1, l2)::(r1, r2)::rest) assigns ((c1, c2)::cequals)
+      solve ((l1, l2)::(r1, r2)::rest) assigns ((cf1, cf2)::(cs1, cs2)::cequals)
   | (Type.Tuple(ls), Type.Tuple(rs))::rest when List.length ls = List.length rs ->
       solve ((List.zip ls rs) @ rest) assigns cequals
   | (Type.Comonad(c1, t1), Type.Comonad(c2, t2))::rest ->
@@ -42,8 +42,8 @@ let rec normalizeType evalc solutions typ =
   | Type.Tuple(ts) ->
       Type.Tuple(List.map (normalizeType evalc solutions) ts)
   | Type.Primitive s -> typ
-  | Type.Func(c, l, r) -> 
-      Type.Func(evalc c, normalizeType evalc solutions l, normalizeType evalc solutions r)
+  | Type.Func((cf, cs), l, r) -> 
+      Type.Func((evalc cf, evalc cs), normalizeType evalc solutions l, normalizeType evalc solutions r)
 
 // ------------------------------------------------------------------------------------------------
 // Utilities for constraint solving
@@ -111,9 +111,11 @@ module ImplicitParams =
   let solve constrs =
 
     // Turn equality between variables into equivalence classes & filter out the constraints
+    // Also drop all 'None' coeffects, which are to be ignored 
     let equivVars = constrs |> List.choose (function 
         Coeffect.Variable v1, Coeffect.Variable v2 -> Some(v1, v2) | _ -> None)
     let constrs = constrs |> List.filter (function
+        Coeffect.None, _ | _, Coeffect.None |
         Coeffect.Variable _, Coeffect.Variable _ -> false | _ -> true)
     let addAssignment = buildEquivalenceClasses equivVars
 
@@ -162,7 +164,8 @@ module Dataflow =
     | Let (+) (op, Coeffect.Seq(c1, c2)) -> op (evalCoeffect assigns c1) (evalCoeffect assigns c2)
     | Coeffect.Past(n) -> n
     | Coeffect.Variable v -> defaultArg (Map.tryFind v assigns) 0
-    | Coeffect.ImplicitParam _ -> failwith "Unexpected implicit param value in coeffect"
+    | Coeffect.ImplicitParam _ -> failwith "Unexpected implicit param value in dataflow coeffect"
+    | Coeffect.None -> failwith "Unexpected none in dataflow coeffects"
     | _ -> failwith "Unexpected coeffect value"
 
 
@@ -173,10 +176,12 @@ module Dataflow =
     // Turn equality between variables into equivalence classes
     // Turn 'merge(r, s) = X' constraints from 'fun' into equivalence 
     //   'r = s' and replace them with simple 'r = X'
+    // Also, filter out all constraints involving `None` coeffects
     let equivVars = constrs |> List.choose (function 
       | Coeffect.Merge(Coeffect.Variable v1, Coeffect.Variable v2), _ 
       | Coeffect.Variable v1, Coeffect.Variable v2 -> Some(v1, v2) | _ -> None)
     let constrs = constrs |> List.choose (function
+      | Coeffect.None, _ | _, Coeffect.None
       | Coeffect.Variable _, Coeffect.Variable _ -> None 
       | Coeffect.Merge(Coeffect.Variable v1, Coeffect.Variable v2), r ->
           Some(Coeffect.Variable v1, r)

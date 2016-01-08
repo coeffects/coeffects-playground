@@ -5,6 +5,7 @@
 [<ReflectedDefinition>]
 module Coeffects.Evaluation
 
+open Coeffects
 open Coeffects.Ast
 
 type Value =
