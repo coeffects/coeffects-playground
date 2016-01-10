@@ -26,11 +26,15 @@ function setUiProp(el, v) {
 
 // 
 function updateChoices() {
-  $(".ia-choice").each(function() {
-    var el = $(this);
-    if (isSelected(el)) setUiProp($(this), $(this).data("ia-color").sel);
-    else setUiProp($(this), $(this).data("ia-color").bg);      
-  });  
+  $(".ia-choice")
+    .filter(function() {
+      return $(this).data("ia-ui-kind") != null;
+    })
+    .each(function() {
+      var el = $(this);
+      if (isSelected(el)) setUiProp($(this), $(this).data("ia-color").sel);
+      else setUiProp($(this), $(this).data("ia-color").bg);      
+    });  
 }
 
 // For iterating over things in a loop
@@ -52,10 +56,13 @@ function initializeBoxes() {
         {bg:"#25444C",sel:"#3E727F"}, {bg:"#4C2D45",sel:"#7F4B74"} ]),
       circle: new RoundBuffer([
         {sel:"#4F9589",bg:"#8DD3C7"}, {sel:"#827E9E",bg:"#BEBADA"},
-        {sel:"#B13628",bg:"#FB8072"}, {sel:"#37688A",bg:"#80B1D3"},
-        {sel:"#C27927",bg:"#FDB462"}, {sel:"#7AA530",bg:"#B3DE69"} ]) };
+        {sel:"#C27927",bg:"#FDB462"}, {sel:"#7AA530",bg:"#B3DE69"},
+        {sel:"#B13628",bg:"#FB8072"}, {sel:"#37688A",bg:"#80B1D3"} ]) };
   
   $(".ia-choice")
+    .filter(function() {
+      return $(this).data("ia-ui-kind") != null;
+    })
     .on("mouseenter", function() {      
       setUiProp($(this), $(this).data("ia-color").sel);
     })
@@ -65,8 +72,8 @@ function initializeBoxes() {
     })
     .each(function() {
       var key = $(this).data("ia-key");
-      if (colors[key] == null)
-        colors[key] = palettes[$(this).data("ia-ui-kind")].next();
+      var uikind = $(this).data("ia-ui-kind");
+      if (colors[key] == null) colors[key] = palettes[uikind].next();
       $(this).data("ia-color", colors[key])
       setUiProp($(this), $(this).data("ia-color").bg);
     });
@@ -109,7 +116,8 @@ $(function() {
   .on("click", function(e) {
     var show = " " + $(this).data("ia-show") + " ";
     var hide = " " + $(this).data("ia-hide") + " ";
-    var trueOrNot = isSelected($(this)) ? false : true;
+    var undoable = $(this).data("ia-undoable");
+    var trueOrNot = (undoable && isSelected($(this))) ? false : true;
     for(var key in states) {
       if (show.indexOf(" " + key + " ") >= 0) states[key] = trueOrNot;
       if (hide.indexOf(" " + key + " ") >= 0) states[key] = !trueOrNot;

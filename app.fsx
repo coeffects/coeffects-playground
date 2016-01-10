@@ -59,45 +59,170 @@ open System.Text
 
 [<ReflectedDefinition>]
 module Client = 
-  let source prefix = 
-    if prefix = "impl1" then 
-      """
-let f = 
-  let ?x = 1 in
-  (fun a -> ?x + ?y) in
-let ?x = 2 in
-let ?z = 3 in f 0""".Trim()
-    elif prefix = "df1" then
-      """
-fun y -> 
-  let f = (fun x -> prev x) in 
-  f y    """.Trim()
-    else
-      """
-fun y -> prev(fun x -> 
-  (prev x + prev y))    """.Trim()
 
+// ------------------------------------------------------------------------------------------------
+// Create a UI where the user can enter inputs and run the translated program
+// ------------------------------------------------------------------------------------------------
 
+  let el s (attrs:list<string*string>) children = 
+    let jp = attrs |> List.fold (fun (j:JQuery) (k, v) -> j.attr(k, v)) (jq("<" + s + " />"))
+    children |> List.fold (fun (p:JQuery) (c:JQuery) -> p.append(c)) jp
+  let css (attrs:list<string*string>) (j:JQuery) = 
+    attrs |> List.fold (fun (j:JQuery) (k, v) -> j.css(k, v)) j
+  let html (s:string) (j:JQuery) = j.html(s)
+  let appendTo (p:JQuery) (j:JQuery) = j.appendTo(p)
+  let click (f:unit -> unit) (j:JQuery) = j.click(fun _ -> f(); obj())
 
-  let filter f xs = List.foldBack (fun x xs -> if f x then x::xs else xs) xs [] 
-   
+  let setupPlayground prefix kind tyinfo transle = 
+    let playground = Globals.document.getElementById(prefix + "-playground") :?> HTMLPreElement
+    playground.innerHTML <- "";
+    match kind, tyinfo with
+    | CoeffectKind.PastValues, (_, Coeffect.Past m, Type.Func((Coeffect.Past n, _), _, _)) ->
+        let pl = jq(playground)
+        let pastValues = [ for i in 0 .. n -> i, el "input" [("type","text"); ("class","form-control")] [] |> css ["width","50px"] ]
+        el "form" [("class","form-inline")] [
+          el "div" [("class","input-group")] [
+            yield el "div" [("class","input-group-addon")] [] |> html "input = ["
+            for i, pv in pastValues do
+              if i <> 0 then 
+                yield el "div" [("class","input-group-addon")] [] |> css ["padding","6px 8px 6px 4px"] |> html ";"
+              yield pv 
+            yield el "div" [("class","input-group-addon")] [] |> html "]" ]
+        ] |> appendTo pl |> ignore
+        el "button" [ ("class", "btn btn-success") ] [] 
+        |> html "Run"
+        |> click (fun () ->
+          let input = Value.ListComonad [ for _ in 0 .. m -> Value.Unit ]
+          let arg = Value.ListComonad [ for _, i in pastValues -> Value.Integer(1 * unbox(i._val())) ]
+          let res = 
+            let (Value.Function f | Fail "Expected function!" f) = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle
+            f arg
+          match res with 
+          | Value.Integer n -> Globals.window.alert(string n)
+          | _ -> Globals.window.alert("Something weird") )
+        |> appendTo pl |> ignore
+
+    | CoeffectKind.ImplicitParams, (_, c, _) ->
+        let coeffs = Solver.ImplicitParams.evalCoeffect Map.empty c |> Set.toList
+        let pl = jq(playground)
+        let fg = el "div" [ ("class","form-group") ] [] |> appendTo pl
+        let inputs = 
+          [ for c in coeffs -> 
+              let input = el "input" [ ("type","text"); ("class","form-control") ] []
+              let div = el "div" [ ("class","input-group-addon") ] [] |> css [ ("min-width", "70px") ] |> html ("?" + c + " = ")
+              el "div" [ ("class","input-group") ] [ div; input ] |> css [ ("margin-bottom", "10px") ] |> appendTo fg |> ignore
+              c, input ]
+
+        el "div" [("class","form-group")] [
+          el "button" [ ("class", "btn btn-success") ] [] 
+          |> html "Run"
+          |> click (fun () ->
+            let input = Value.ImplicitsComonad(Value.Unit, Map.ofList [ for c, i in inputs -> c, Value.Integer(1 * unbox(i._val())) ])
+            let res = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle
+            match res with 
+            | Value.Integer n -> Globals.window.alert(string n)
+            | _ -> Globals.window.alert("Something weird")
+          )
+        ] |> appendTo pl |> ignore
+    | _ -> ()
+
+// ------------------------------------------------------------------------------------------------
+// Create a UI where the user can browse the typing derivation
+// ------------------------------------------------------------------------------------------------
+
   [<JSEmitInline("MathJax.Hub.Queue(['Typeset',MathJax.Hub,{0}]);")>]
   let typeSetElement (el:string) : unit = failwith "!"
   
   [<JSEmitInline("MathJax.Hub.Queue({0});")>]
   let queueAction(f:unit -> unit) : unit = failwith "!"
 
-  let setup kind mode prefix = 
-    let btn = Globals.document.getElementById(prefix + "-btn") :?> HTMLButtonElement
-    let input = Globals.document.getElementById(prefix + "-input") :?> HTMLTextAreaElement
-    let output = Globals.document.getElementById(prefix + "-output") :?> HTMLPreElement
-    let transl = Globals.document.getElementById(prefix + "-transl") :?> HTMLPreElement
+  let setupTypeDerivation prefix kind typed =
     let judgement = Globals.document.getElementById(prefix + "-judgement") :?> HTMLPreElement
     let judgementTemp = Globals.document.getElementById(prefix + "-judgement-temp") :?> HTMLPreElement
 
-    let playground = Globals.document.getElementById(prefix + "-playground") :?> HTMLPreElement
+    let rec findSubExpression locations (Typed.Typed(_, e) as te) : Typed<CoeffVars * Coeffect * Type> = 
+      match locations, e with
+      | [], _ -> te
+      | 0::t, (Expr.Let(_, e, _) | Expr.App(e, _) | Expr.Binary(_, e, _) | Expr.Fun(_, e) | Expr.Prev(e) )
+      | 1::t, (Expr.Let(_, _, e) | Expr.App(_, e) | Expr.Binary(_, _, e)) ->
+          findSubExpression t e
+      | _ -> failwith "Invalid path"
 
-    input.value <- source prefix
+    let locations : ref<int list> = ref []
+
+    let rec typeset () =
+      let e = findSubExpression (List.rev locations.Value) typed
+      let arr2 : string[] = [| |]
+      let root = locations.Value |> List.isEmpty
+      let arr2' = MathJax.derivation kind root e arr2
+      judgementTemp.innerHTML <- "\\[" + arr2.join("") + "\\]"
+      typeSetElement (prefix + "-judgement-temp")
+
+      let getNewPath (jo:JQuery) =
+        let index = jq("#" + prefix + " .mtable").index(jo)
+        let length = jq("#" + prefix + " .mtable").length
+        let current = if root then length - 1.0 else length - 2.0
+        if index = current then
+          true, locations.Value
+        elif index > current then
+          false, locations.Value |> List.tail
+        else 
+          false, (int index) :: locations.Value
+
+      let highlight (jo:JQuery) (thisClr:string) (currClr:string) = 
+        let current, path = getNewPath jo
+        let path = List.rev path
+        let id = prefix + "-p-" + (String.concat "-" (List.map string path))
+        let clr = if current then currClr else thisClr
+        jq("#" + id).css("backgroundColor", clr) |> ignore
+        jo.css("backgroundColor", clr) |> ignore
+  
+      queueAction(fun () ->
+        judgement.innerHTML <- judgementTemp.innerHTML
+        judgementTemp.innerHTML <- ""
+          
+        jq("#" + prefix + " .mtable").css("cursor", "pointer") |> ignore
+        let currIndex = jq("#" + prefix + " .mtable").length - (if root then 1.0 else 2.0)
+        jq("#" + prefix + " .mtable").eq(currIndex).css("cursor","default") |> ignore
+
+        jq("#" + prefix + " .mtable")
+          .on("click", fun e o ->
+            jq("#" + prefix + " .p-span").css("backgroundColor", "transparent") |> ignore
+            locations.Value <- snd (getNewPath (jthis()))
+            typeset ()
+            box () )
+          .on("mouseenter", fun e o ->
+            highlight (jthis()) "#c0ffc0" "#ffffc0"
+            box () )
+          .on("mouseleave", fun e o ->
+            highlight (jthis()) "transparent" "transparent"
+            box () )
+        |> ignore )
+
+    typeset ()
+
+// ------------------------------------------------------------------------------------------------
+// Create a UI where the user can browse the typing derivation
+// ------------------------------------------------------------------------------------------------
+
+  let setupHtmlOutput prefix view kind e =
+    let transl = Globals.document.getElementById(prefix + "-" + view) :?> HTMLPreElement
+    transl.innerHTML <- Html.print (Html.printExpr kind prefix 0 [] e)
+
+// ------------------------------------------------------------------------------------------------
+// Create a UI where the user can browse the typing derivation
+// ------------------------------------------------------------------------------------------------
+
+  let filter f xs = List.foldBack (fun x xs -> if f x then x::xs else xs) xs [] 
+
+  let hasFeature prefix feature = 
+     null <> box (Globals.document.getElementById(prefix + "-" + feature))
+  
+  let setup kind mode prefix = 
+    let btn = Globals.document.getElementById(prefix + "-btn") :?> HTMLButtonElement
+    let input = Globals.document.getElementById(prefix + "-input") :?> HTMLTextAreaElement
+
+
     btn.addEventListener_click(fun e ->
       let (Parsec.Parser lex) = Lexer.lexer
       let source = input.value
@@ -109,7 +234,12 @@ fun y -> prev(fun x ->
       let (Parsec.Parser pars) = Parser.expr ()
       let expr = pars tokens |> Option.get |> snd
       let typed = TypeChecker.typeCheck (fun _ _ -> failwith "!") kind mode expr
-      output.innerHTML <- Html.print (Html.printExpr kind prefix 0 [] typed)
+  
+      if hasFeature prefix "output" then
+        setupHtmlOutput prefix "output" kind typed
+
+      if hasFeature prefix "judgement" then
+        setupTypeDerivation prefix kind typed
 
       if mode = CoeffectMode.Flat then      
         let transle  = 
@@ -117,136 +247,32 @@ fun y -> prev(fun x ->
           |> Translation.contract
           |> TypeChecker.typeCheck (Translation.builtins (TypeChecker.coeff typed)) (CoeffectKind.Embedded kind) CoeffectMode.None
 
-        transl.innerHTML <- Html.print (Html.printExpr kind prefix 0 [] transle)
+        if hasFeature prefix "transl" then
+          setupHtmlOutput prefix "transl" kind transle
 
-        let el s (attrs:list<string*string>) children = 
-          let jp = attrs |> List.fold (fun (j:JQuery) (k, v) -> j.attr(k, v)) (jq("<" + s + " />"))
-          children |> List.fold (fun (p:JQuery) (c:JQuery) -> p.append(c)) jp
-        let css (attrs:list<string*string>) (j:JQuery) = 
-          attrs |> List.fold (fun (j:JQuery) (k, v) -> j.css(k, v)) j
-        let html (s:string) (j:JQuery) = j.html(s)
-        let appendTo (p:JQuery) (j:JQuery) = j.appendTo(p)
-        let click (f:unit -> unit) (j:JQuery) = j.click(fun _ -> f(); obj())
-
-        playground.innerHTML <- "";
-        match kind, typed with
-        | CoeffectKind.PastValues, Typed((_, Coeffect.Past m, Type.Func((Coeffect.Past n, _), _, _)), _) ->
-            let pl = jq(playground)
-            let pastValues = [ for i in 0 .. n -> i, el "input" [("type","text"); ("class","form-control")] [] |> css ["width","50px"] ]
-            el "form" [("class","form-inline")] [
-              el "div" [("class","input-group")] [
-                yield el "div" [("class","input-group-addon")] [] |> html "input = ["
-                for i, pv in pastValues do
-                  if i <> 0 then 
-                    yield el "div" [("class","input-group-addon")] [] |> css ["padding","6px 8px 6px 4px"] |> html ";"
-                  yield pv 
-                yield el "div" [("class","input-group-addon")] [] |> html "]" ]
-            ] |> appendTo pl |> ignore
-            el "button" [ ("class", "btn btn-success") ] [] 
-            |> html "Run"
-            |> click (fun () ->
-              let input = Value.ListComonad [ for _ in 0 .. m -> Value.Unit ]
-              let arg = Value.ListComonad [ for _, i in pastValues -> Value.Integer(1 * unbox(i._val())) ]
-              let res = 
-                let (Value.Function f | Fail "Expected function!" f) = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle
-                f arg
-              match res with 
-              | Value.Integer n -> Globals.window.alert(string n)
-              | _ -> Globals.window.alert("Something weird") )
-            |> appendTo pl |> ignore
-
-        | CoeffectKind.ImplicitParams, Typed((_, c, _), _) ->
-            let coeffs = Solver.ImplicitParams.evalCoeffect Map.empty c |> Set.toList
-            let pl = jq(playground)
-            let fg = el "div" [ ("class","form-group") ] [] |> appendTo pl
-            let inputs = 
-              [ for c in coeffs -> 
-                  let input = el "input" [ ("type","text"); ("class","form-control") ] []
-                  let div = el "div" [ ("class","input-group-addon") ] [] |> css [ ("min-width", "70px") ] |> html ("?" + c + " = ")
-                  el "div" [ ("class","input-group") ] [ div; input ] |> css [ ("margin-bottom", "10px") ] |> appendTo fg |> ignore
-                  c, input ]
-
-            el "div" [("class","form-group")] [
-              el "button" [ ("class", "btn btn-success") ] [] 
-              |> html "Run"
-              |> click (fun () ->
-                let input = Value.ImplicitsComonad(Value.Unit, Map.ofList [ for c, i in inputs -> c, Value.Integer(1 * unbox(i._val())) ])
-                let res = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle
-                match res with 
-                | Value.Integer n -> Globals.window.alert(string n)
-                | _ -> Globals.window.alert("Something weird")
-              )
-            ] |> appendTo pl |> ignore
-        | _ -> ()
-
-      let rec findSubExpression locations (Typed.Typed(_, e) as te) : Typed<CoeffVars * Coeffect * Type> = 
-        match locations, e with
-        | [], _ -> te
-        | 0::t, (Expr.Let(_, e, _) | Expr.App(e, _) | Expr.Binary(_, e, _) | Expr.Fun(_, e) | Expr.Prev(e) )
-        | 1::t, (Expr.Let(_, _, e) | Expr.App(_, e) | Expr.Binary(_, _, e)) ->
-           findSubExpression t e
-        | _ -> failwith "Invalid path"
-
-      let locations : ref<int list> = ref []
-
-      let rec typeset () =
-        let e = findSubExpression (List.rev locations.Value) typed
-        let arr2 : string[] = [| |]
-        let root = locations.Value |> List.isEmpty
-        let arr2' = MathJax.derivation kind root e arr2
-        judgementTemp.innerHTML <- "\\[" + arr2.join("") + "\\]"
-        typeSetElement (prefix + "-judgement-temp")
-
-        let getNewPath (jo:JQuery) =
-          let index = jq("#" + prefix + " .mtable").index(jo)
-          let length = jq("#" + prefix + " .mtable").length
-          let current = if root then length - 1.0 else length - 2.0
-          if index = current then
-            true, locations.Value
-          elif index > current then
-            false, locations.Value |> List.tail
-          else 
-            false, (int index) :: locations.Value
-
-        let highlight (jo:JQuery) (thisClr:string) (currClr:string) = 
-          let current, path = getNewPath jo
-          let path = List.rev path
-          let id = prefix + "-p-" + (String.concat "-" (List.map string path))
-          let clr = if current then currClr else thisClr
-          jq("#" + id).css("backgroundColor", clr) |> ignore
-          jo.css("backgroundColor", clr) |> ignore
-  
-        queueAction(fun () ->
-          judgement.innerHTML <- judgementTemp.innerHTML
-          judgementTemp.innerHTML <- ""
-          
-          jq("#" + prefix + " .mtable").css("cursor", "pointer") |> ignore
-          let currIndex = jq("#" + prefix + " .mtable").length - (if root then 1.0 else 2.0)
-          jq("#" + prefix + " .mtable").eq(currIndex).css("cursor","default") |> ignore
-
-          jq("#" + prefix + " .mtable")
-            .on("click", fun e o ->
-              jq("#" + prefix + " .p-span").css("backgroundColor", "transparent") |> ignore
-              locations.Value <- snd (getNewPath (jthis()))
-              typeset ()
-              box () )
-            .on("mouseenter", fun e o ->
-              highlight (jthis()) "#c0ffc0" "#ffffc0"
-              box () )
-            .on("mouseleave", fun e o ->
-              highlight (jthis()) "transparent" "transparent"
-              box () )
-          |> ignore )
-
-      typeset ()
-
+        if hasFeature prefix "playground" then
+          let (Typed(tyinfo, _)) = typed
+          setupPlayground prefix kind tyinfo transle
+    
       null
     )
 
   let main () =
-    setup CoeffectKind.ImplicitParams CoeffectMode.Flat "impl1"
-    setup CoeffectKind.PastValues CoeffectMode.Flat "df1"
-    setup CoeffectKind.PastValues CoeffectMode.Structural "df2"
+    jq(".coeff-demo").each(fun _ _ ->
+      let kind = 
+        match jthis().data("coeff-kind") :?> string with
+        | "implicit" -> CoeffectKind.ImplicitParams
+        | "dataflow" -> CoeffectKind.PastValues  
+        | _ -> failwith "Unexpected kind"
+      let mode = 
+        match jthis().data("coeff-mode") :?> string with
+        | "flat" -> CoeffectMode.Flat
+        | "structural" -> CoeffectMode.Structural
+        | _ -> failwith "Unexpected mode"
+      let id = jthis().attr("id")
+
+      setup kind mode id
+      obj() ) |> ignore
 
 let script = 
   translate <@ Client.main() @>

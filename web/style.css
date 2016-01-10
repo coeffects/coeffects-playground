@@ -107,65 +107,69 @@ nav.affix .ia-ui-menu li {
 }
 
 /* ------------------------------------------------------------------------------------ *\
-   Callout with IA boxes for choosing typical layouts
+   Outline with IA boxes for choosing typical layouts
 \* ------------------------------------------------------------------------------------ */
 
-.callout {
+.outline {
   font: 13pt 'PT Sans',verdana,sans-serif;
   background:black;
   color:white;
-  padding:30px 0px 30px 0px;
+  padding:35px 0px 35px 0px;
 }
-.callout a {
+.outline a {
   color:#87CDFF;
 }
-.callout p {
+.outline h2 {
+  font: 20pt Kreon,'Times New Roman',times,serif;
+  margin-top:0px;
+}
+.outline p, .outline li {
   margin:0px 0px 12px 0px;
 }
-.callout .ia-ui-boxes {
+.outline .ia-ui-boxes {
   margin:0px 10px 0px 10px;
 }
-.callout .ia-ui-boxes .col-md-6 {
+.outline .ia-ui-boxes .col-md-6 {
   padding:7px;
 }
-.callout .ia-ui-box {
+.outline .ia-ui-box {
   transition:all 0.5s;
   cursor:pointer;
 }
-.callout div.ia-ui-box {
+.outline div.ia-ui-box {
   min-height:40px;
   padding:0px;
   margin:0px;
   width:100%;
   position:relative;
 }
-.callout div.ia-ui-box p {
+.outline div.ia-ui-box p {
   position:absolute;
   top:50%;
   margin:0px 20px 0px 20px;
   transform: translateY(-50%);
 }
-.callout div.ia-ui-box p i {
+.outline div.ia-ui-box p i {
   margin-right:15px;
 }
-.callout div.ia-ui-box p strong {
+.outline div.ia-ui-box p strong {
   margin-right:5px;
 }
 @media (min-width: 768px) {
-  .callout div.ia-ui-box p i {
+  .outline div.ia-ui-box p i {
     float:right;
     font-size:120%;
     margin:10px 0px 5px 10px;
   }
 }
 @media (min-width: 768px) {
-  .callout div.ia-ui-box { min-height:80px; }  
+  .outline div.ia-ui-box { min-height:80px; }  
 }
 @media (min-width: 992px) {
-  .callout div.ia-ui-box { min-height:130px; }    
+  .outline div.ia-ui-box { min-height:130px; }    
 }
 @media (min-width: 1200px) {
-  .callout div.ia-ui-box { min-height:100px; }  
+  .outline div.ia-ui-box { min-height:100px; }  
 }
 
 /* ----------------------------------------------------------------------------------- **
@@ -190,9 +194,10 @@ nav.affix .ia-ui-menu li {
   width:220px;
   text-align:right;
 }
-.body .new-section {
-  margin-top:20px;
+.new-section {
+  margin-top:30px;
 }
+
 .body h3 {
   font: 17pt Kreon,'Times New Roman',times,serif;
 }
@@ -201,11 +206,20 @@ nav.affix .ia-ui-menu li {
   margin:0px 0px 10px 0px;
   font: 13pt 'PT Sans',verdana,sans-serif;
 }
+
+.body .callout {
+  background:black;
+  color:white;
+  padding:20px;
+  margin:20px;
+}
+/*
 .body strong {
   float:right;
   width:250px;
   margin:0px -200px 0px 0px;
 }
+*/
 .body .ia-ui-bar-left {
   border-left:10px solid white;
   padding-left:15px;
@@ -235,10 +249,23 @@ nav.affix .ia-ui-menu li {
 .btn { background:black; color:white; }
 .btn:focus, .btn.hover, .btn:hover { background:#404040 !important; color:white !important; }
 
+#playground-callout i {
+  float:left;
+  font-size:200%;
+  margin:-2px 10px 5px -35px;
+}
+
+@media (min-width: 768px) {
+  #playground-callout i { margin-top:10px; }
+}
+
 /* Interactive document stuff */
 .ia {
   overflow:hidden;
   transition:all 0.7s;
+}
+.ia-choice {
+  cursor:pointer;
 }
 .ia-expand {
   float:right;

@@ -40,16 +40,16 @@
          <li><a href="#">Demos</a></li>
        </ul>
        <ul class="nav navbar-nav navbar-right ia-ui-menu">
-         <li class="ia-choice" data-ia-key="ch1" data-ia-ui-kind="box" data-ia-show="" data-ia-hide="motivation theory"><a href="#">Short</a></li>
-         <li class="ia-choice" data-ia-key="ch2" data-ia-ui-kind="box" data-ia-show="motivation" data-ia-hide="theory"><a href="#">Practice</a></li>
-         <li class="ia-choice" data-ia-key="ch3" data-ia-ui-kind="box" data-ia-show="theory" data-ia-hide="motivation"><a href="#">Theory</a></li>
-         <li class="ia-choice" data-ia-key="ch4" data-ia-ui-kind="box" data-ia-show="motivation theory" data-ia-hide=""><a href="#">All</a></li>
+         <li class="ia-choice" data-ia-key="ch1" data-ia-ui-kind="box" data-ia-show="" data-ia-hide="intro-motivation intro-theory langs-info"><a href="#">Short</a></li>
+         <li class="ia-choice" data-ia-key="ch2" data-ia-ui-kind="box" data-ia-show="intro-motivation" data-ia-hide="intro-theory langs-info"><a href="#">Practice</a></li>
+         <li class="ia-choice" data-ia-key="ch3" data-ia-ui-kind="box" data-ia-show="intro-theory langs-info" data-ia-hide="intro-motivation"><a href="#">Theory</a></li>
+         <li class="ia-choice" data-ia-key="ch4" data-ia-ui-kind="box" data-ia-show="intro-motivation intro-theory langs-info" data-ia-hide=""><a href="#">All</a></li>
        </ul>
       </div>
     </div>
   </nav>      
   
-  <div class="below-nav callout">
+  <div class="below-nav outline">
   <div class="container">
   <div class="col-sm-7">
     
@@ -80,22 +80,22 @@
   
     <div class="row ia-ui-boxes">
       <div class="col-md-6">
-        <div class="ia-ui-box ia-choice" data-ia-key="ch1" data-ia-ui-kind="box" data-ia-show="" data-ia-hide="motivation theory">
+        <div class="ia-ui-box ia-choice" data-ia-key="ch1" data-ia-ui-kind="box" data-ia-show="" data-ia-hide="intro-motivation intro-theory langs-info">
           <p><i class="fa fa-thumbs-up"></i><strong>Short is good!</strong> You can always come back.</p></div>
       </div>
       <div class="col-md-6">
-        <div class="ia-ui-box ia-choice" data-ia-key="ch2" data-ia-ui-kind="box" data-ia-show="motivation" data-ia-hide="theory">
+        <div class="ia-ui-box ia-choice" data-ia-key="ch2" data-ia-ui-kind="box" data-ia-show="intro-motivation" data-ia-hide="intro-theory langs-info">
           <p><i class="fa fa-industry"></i><strong>I'm practical!</strong> Show me more examples.</p></div>
       </div>
     </div>
     <div class="row ia-ui-boxes">
       <div class="col-md-6">
-        <div class="ia-ui-box ia-choice" data-ia-key="ch3" data-ia-ui-kind="box" data-ia-show="theory" data-ia-hide="motivation">
+        <div class="ia-ui-box ia-choice" data-ia-key="ch3" data-ia-ui-kind="box" data-ia-show="intro-theory langs-info" data-ia-hide="intro-motivation">
           <p><i class="fa fa-university"></i><strong>Love theory!</strong> Give me all the equations.</p></div>
       </div>
       <div class="col-md-6">
-        <div class="ia-ui-box ia-choice" data-ia-key="ch4" data-ia-ui-kind="box" data-ia-show="motivation theory" data-ia-hide="">
-          <p><i class="fa fa-hourglass-start"></i><strong>Show me all!</strong> Time is not an issue.</p></div>
+        <div class="ia-ui-box ia-choice" data-ia-key="ch4" data-ia-ui-kind="box" data-ia-show="intro-motivation intro-theory langs-info" data-ia-hide="">
+          <p><i class="fa fa-search"></i><strong>Show me all!</strong> Time is not an issue.</p></div>
       </div>
     </div>
 
@@ -109,6 +109,13 @@
       \definecolor{lcoeff}{RGB}{78,206,88}
       \definecolor{ltyp}{RGB}{255,202,79}
       \definecolor{lkvd}{RGB}{127,165,255}
+      
+      \definecolor{eff}{RGB}{177,35,43}
+      \definecolor{coeff}{RGB}{35,177,53}
+      \definecolor{typ}{RGB}{177,93,43}
+      \definecolor{expr}{RGB}{0,0,0}
+      \definecolor{kvd}{RGB}{0,45,177}
+      \definecolor{num}{RGB}{43,177,93}      
     \]
   </div>
   <div class="body container">
@@ -116,11 +123,13 @@
     <div class="hidden-sm col-md-1"></div>
     <div class="col-sm-8 col-md-7 rside">
       <h2>
-        What problem are coeffects solving?  
-        <span class="ia-choice ia-ui-circle" data-ia-key="ch8" data-ia-ui-kind="circle" data-ia-show="motivation" data-ia-hide="">
+        What problem are coeffects solving?<br />
+        <span class="ia-choice ia-ui-circle" data-ia-undoable="true" data-ia-key="ch5" data-ia-ui-kind="circle" data-ia-show="intro-motivation" data-ia-hide=""
+          title="Click here to see additional &#10;practical motivation for coeffects">
           <i class="fa fa-industry"></i>
         </span>
-        <span class="ia-choice ia-ui-circle" data-ia-key="ch9" data-ia-ui-kind="circle" data-ia-show="theory" data-ia-hide="">
+        <span class="ia-choice ia-ui-circle" data-ia-undoable="true" data-ia-key="ch6" data-ia-ui-kind="circle" data-ia-show="intro-theory" data-ia-hide=""
+          title="Click here to learn more about &#10;the theory and related work">
           <i class="fa fa-university"></i>
         </span>
       </h2>
@@ -135,7 +144,7 @@
       realize that many programming features related to _context_ can be caputred by the
       a simple _unified abstraction_. This is what coeffects do!
 
-      <div class="ia-choice ia-ui-bar-left" data-ia-key="ch8" data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="motivation" data-ia-hide="">
+      <div class="ia-choice ia-ui-bar-left" data-ia-undoable="true" data-ia-key="ch5" data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="intro-motivation" data-ia-hide="">
       
       What are some examples of context-aware computations?
       
@@ -150,7 +159,7 @@
       <<<<      
     </div>
   </div>
-  <div class="row ia" data-ia-key="motivation" data-ia-mode="long">
+  <div class="row ia" data-ia-key="intro-motivation" data-ia-mode="long">
     <div class="col-sm-6">
       >>>>
           [hide]
@@ -320,14 +329,14 @@
     </div>
     <div class="col-md-5">
       >>>>
-      <div class="ia-choice ia-ui-bar-right" data-ia-key="ch9" data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="theory" data-ia-hide="">
+      <div class="ia-choice ia-ui-bar-right" data-ia-undoable="true" data-ia-key="ch6" data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="intro-theory" data-ia-hide="">
 
-      As the name suggests, _coeffects_ are the <abbr title="In the category-theoretial sense, but there are interesting subtle issues!">dual</abbr> 
+      _Coeffects_ are the <abbr title="In the category-theoretial sense, but there are interesting subtle issues!">dual</abbr> 
       of _effects_. Effects represent what your program _does to the world_ while coeffects track 
       what your program _requires from the world_. 
       
-      For example, writing to a console is an I/O effect, but if your program reads the current time, 
-      it is a coeffect. The environment has to provide a clock. 
+      Writing to a console is an I/O effect. You modify the world. If your program reads the 
+      current time, it is a coeffect. The environment has to provide a clock. 
       
       One difference between effects and coeffects is that coeffects can be satisfied in multiple 
       different ways. If the device visitng your client/server application does not have clock, 
@@ -341,48 +350,159 @@
     </div>
   </div>
   
-  <div class="row ia" data-ia-key="theory" data-ia-mode="long">
-    <div class="hidden-sm col-md-1"></div>
-    <div class="col-sm-8 col-md-7 rside">
+  <div class="row ia" data-ia-key="intro-theory" data-ia-mode="long">
+    >>>>    
+    <div class="col-sm-6 col-md-4">
       
-      It is not just two different ways of writing - flat and structural coeffects.
+    ### Lambda abstraction
       
-      Comonads
+    In effect systems, the effects of function body are always <abbr title="Ross Tate (2013) calls 
+    this producer effect systems.">delayed</abbr>. A printing inside function body will happen when the 
+    function is executed. Coeffects are different. 
+    
+    Say we have a function that requires a clock. We
+    construct it on the server and then send it to the client. The clock can come from the declaration
+    side (server) or from the call side (client). Scroll to [coeffect type systems](#typesystem) 
+    for the details.
+  
+    </div><div class="col-sm-6 col-md-4">
       
+    ### Structural coeffects
+    
+    Coeffects can be associated with the whole context, but they can also talk about 
+    _individual variables_. For example, we can track whether a variable is used (live) 
+    or not (dead):
+    
+    $$$
+    x : {\color{typ} \text{int}}, y : {\color{typ} \text{int}} {\scriptsize \;@\;} 
+      {\color{coeff} \langle \sf L, \sf D \rangle } 
+      \vdash x : {\color{typ} \text{int}}
+    
+    Here, the coeffect is a _vector_ of annotations and we see the $x$ is live but 
+    $y$ is dead. The compiler can then eliminate dead variables!
+
+    </div><div class="col-sm-12 col-md-4">
+      
+    ### Comonadic semantics
+    
+    Effectful computations can be <abbr title="This famous result is due to Moggi (1991)">modelled using monads</abbr>.
+    A function $\tau_1 \rightarrow \tau_2$ with side effects becomes $\tau_1 \rightarrow {\color{eff} M}\tau_2$ 
+    where the monad ${\color{eff} M}$ tracks the additional effects as part of the result.
+    
+    Context-aware computations can be similarly <abbr title="This has first been discovered by Uustalu and 
+      Vene (2008)">modelled using comonads</abbr>. A function that requires additional context becomes
+    ${\color{coeff} C} \tau_1 \rightarrow \tau_2$ where the comonad ${\color{coeff} C}$ captures the
+    additional context.
+    
     </div>
+    <<<<
   </div>  
   
   <div class="row new-section">
-    <div class="col-sm-4 col-md-3"></div>
-    <div class="col-sm-8 col-md-7 lside">  
-
+    <div class="hidden-sm col-md-3"></div>
+    <div class="col-sm-12 col-md-9 lside">  
+    <h2>
+      Two coeffect languages<br />
+      <span class="ia-choice ia-ui-circle" data-ia-undoable="true" data-ia-key="ch7" data-ia-ui-kind="circle" data-ia-show="langs-info" data-ia-hide=""
+        title="Click here to learn more about &#10;how the coeffect playground works">
+        <i class="fa fa-search"></i>
+      </span>
+    </h2>
     >>>>
-    Two coeffect languages
-    ----------------------
+    
+    <div class="row"><div class="col-sm-6">      
+    <h3 style="margin-top:0px">Implicit parameters</h3>
+    
+    Here, you can play with two simple coeffect languages. A language with 
+    <abbr title="This is inspired by Haskell&quote;s implicit parameters introduced by Lewis et al. (2000)">implicit 
+    parameters</abbr> shows how coeffects track additional contextual information such as
+    available resources (GPS, network printer) or available device features (file system, network). 
+    In our small demo, resources are written as `?size`.
+    
+    </div><div class="col-sm-6">
+    <h3 style="margin-top:0px">Dataflow language</h3>
+    
+    The second demo is a simple 
+    <abbr title="The demo is inspired by the synchronous dataflow language Lustre introduced by Halbwachs et al. (1991)">
+    dataflow language</abbr> where all variables represent _streams_ of values
+    and you can access previous value using the `prev` keyword. For example `(x + prev x) / 2`
+    calculates the average over the current and previous value. Here, coeffects track how many
+    past values you need.
+          
+    </div></div>
+    <div class="ia-choice ia-ui-bar-right" data-ia-undoable="true" data-ia-key="ch7" data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="langs-info" data-ia-hide="">
+    <div class="row callout" id="playground-callout">
+    <div class="col-sm-12"><h3 style="margin:5px 0px 15px 15px;">How does the coeffect playground work?</h3></div>
+    <div class="col-sm-4" style="padding-left:30px">
+    <i class="fa fa-check-circle" style="color:#FB8072"></i> 
+    
+    **You choose a snippet. Coeffect system checks it.**
+    
+    <p class="ia" data-ia-key="langs-info" data-ia-mode="long">
+    The system infers the names of the required implicit parameters
+    or the required number of past values in the input streams.</p>
+    
+    </div><div class="col-sm-4" style="padding-left:30px">
+    <i class="fa fa-arrow-circle-right" style="color:#80B1D3"></i> 
+ 
+    **Behind the scenes, the snippet is <abbr title="Translated into a plain language.">desugared</abbr>.**
+    
+    <p class="ia" data-ia-key="langs-info" data-ia-mode="long">
+    In the translated code, implicit parameters are passed around as 
+    dictionaries and streams become lists of values.</p>
+    
+    </div><div class="col-sm-4" style="padding-left:30px">      
+    <i class="fa fa-play-circle" style="color:#FDB462"></i> 
 
-    Programming languages need to evolve to reflect the changes in the computing ecosystem.
-    We believe that the next big challenge for programming language designers is building
-    languages that understand the _context in which programs run_.
-      
-    This challenge is not easy to see. We are so used to work with context using current
-    error-prone methods that we do not even _see that there is an issue_. We also do not
-    realize that many programming features related to _context_ can be caputred by the
-    same _unified abstraction_. This is what coeffects do!      
+    **Enter inputs and run the code. It cannot fail!**
+    
+    <p class="ia" data-ia-key="langs-info" data-ia-mode="long">
+    The coeffect type system guarantees that program accesses only the values that
+    it asks for and so the program runs correctly!</p>
+    
+    </div></div></div>    
     <<<<
+
     
     </div>
   </div>
-  <div class="container" id="impl1">
+  <div class="container coeff-demo" data-coeff-mode="flat" data-coeff-kind="implicit" id="impl1">
     <div class="row">
       <div class="col-md-6">
-        <textarea class="form-control" id="impl1-input" style="font-family:inconsolata; height:150px"></textarea>
+        >>>>
+        
+        ### Implicit parameters
+        
+        Implicit parameters are the simplest example to show how resource tracking works.
+        In a langauge with implicit parameters you can use `?foo`
+        
+            fun x -> x + ?y
+        
+        They are both lexically and dynamically scoped
+        
+            let f = (fun x -> x + ?y)
+            let ?y = 10 in f 5
+    
+        but you can also write
+
+            let f = 
+              let ?y = 10 in
+              (fun x -> x + ?y) in
+            f 5        
+        
+        Check out some more examples!
+        <<<<
+        
+      </div>
+      <div class="col-md-6">
+        <br /><br /><br />
+        
+        <textarea class="form-control" id="impl1-input" style="font-family:inconsolata; height:150px">
+foo</textarea>
         <button class="btn btn-success" id="impl1-btn">Do stuff</button>
         <div id="impl1-playground">
         </div>
-      </div>
-      <div class="col-md-6">
         <pre id="impl1-output">(Output goes here...)</pre>
-        <pre id="impl1-transl">(Output goes here...)</pre>
       </div>
     </div>
     <div class="row">
@@ -395,9 +515,9 @@
 </div>
 
 
-<div class="callout" style="margin-top:200px">
+<div class="outline" style="margin-top:200px">
   <div class="body container">
-    <h2>What problems are coeffects solving?</h2>
+    <h2><a name="typesystem">Type systems</a></h2>
   </div>
 </div>
 <div class="body container">
@@ -503,10 +623,10 @@ Long scrolling text here... Ovi lispmd idr. Blah goo bar foor foo.  Ovi lispmd i
   
 </div>
 </div>
-<div class="container" id="df1">
+<div class="container coeff-demo" data-coeff-mode="structural" data-coeff-kind="dataflow" id="df1">
   <div class="row">
     <div class="col-md-6">
-      <textarea class="form-control" id="df1-input" style="font-family:inconsolata; height:150px"></textarea>
+      <textarea class="form-control" id="df1-input" style="font-family:inconsolata; height:150px">fun x -> fun y -> x + prev y</textarea>
       <button class="btn btn-success" id="df1-btn">Do stuff</button>
       <div id="df1-playground">
       </div>

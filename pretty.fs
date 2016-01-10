@@ -396,7 +396,7 @@ module MathJax =
           else ar.push(",")
           coeff kind false c ar |> ignore
         ar.push("\\rangle")
-      ar      
+      ar
 
   /// Format a typing judgement of the form $\Gamma @ c \vdash e : \tau$
   let judgement kind (Typed.Typed((v, c, t), e) as te) (ar:string[]) =
