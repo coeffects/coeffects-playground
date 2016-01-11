@@ -123,7 +123,7 @@
     <div class="hidden-sm col-md-1"></div>
     <div class="col-sm-8 col-md-7 rside">
       <h2>
-        What problem are coeffects solving?<br />
+        <span>What problem are coeffects solving?</span><br class="hidden-sm hidden-xs hidden-md" />
         <span class="ia-choice ia-ui-circle" data-ia-undoable="true" data-ia-key="ch5" data-ia-ui-kind="circle" data-ia-show="intro-motivation" data-ia-hide=""
           title="Click here to see additional &#10;practical motivation for coeffects">
           <i class="fa fa-industry"></i>
@@ -402,7 +402,7 @@
     <div class="hidden-sm col-md-3"></div>
     <div class="col-sm-12 col-md-9 lside">  
     <h2>
-      Two coeffect languages<br />
+      <span>Two coeffect languages</span><br class="hidden-sm hidden-xs hidden-md" />
       <span class="ia-choice ia-ui-circle" data-ia-undoable="true" data-ia-key="ch7" data-ia-ui-kind="circle" data-ia-show="langs-info" data-ia-hide=""
         title="Click here to learn more about &#10;how the coeffect playground works">
         <i class="fa fa-search"></i>
@@ -468,47 +468,66 @@
   </div>
   <div class="container coeff-demo" data-coeff-mode="flat" data-coeff-kind="implicit" id="impl1">
     <div class="row">
-      <div class="col-md-6">
+      <div class="col-md-6" data-coeff-editor="impl1">
         >>>>
         
-        ### Implicit parameters
+        ### Implicit parameters tutorial
         
         Implicit parameters are the simplest example to show how resource tracking works.
         In a langauge with implicit parameters you can use `?foo`
         
-            fun x -> x + ?y
+            [lang=coeffects-flat-impl]
+            ?x + ?y
         
         They are both lexically and dynamically scoped
         
-            let f = (fun x -> x + ?y)
+            [lang=coeffects-flat-impl]
+            let f = (fun x -> x + ?y + ?z) in
             let ?y = 10 in f 5
     
         but you can also write
 
+            [lang=coeffects-flat-impl]
             let f = 
               let ?y = 10 in
-              (fun x -> x + ?y) in
+              (fun x -> x + ?y + ?z) in
             f 5        
         
         Check out some more examples!
+        
+        And the really tricky one.
+        
+        
+            [lang=coeffects-flat-impl]
+            let f = 
+              let ?y = 10 in
+              (fun x -> x + ?y + ?z) in
+            let ?y = 5 in f 5        
+
         <<<<
         
       </div>
       <div class="col-md-6">
-        <br /><br /><br />
-        
-        <textarea class="form-control" id="impl1-input" style="font-family:inconsolata; height:150px">
-foo</textarea>
-        <button class="btn btn-success" id="impl1-btn">Do stuff</button>
-        <div id="impl1-playground">
+        <div class="callout coeffect-playground" style="padding:30px">
+          <h3 style="margin:5px 0px 15px 0px;">Implicit parameters playground</h3>
+          <p>Choose a sample from the tutorial or write your own snippet using 
+            <code>?param</code> to access an implicit parameter value!</p>
+
+          <textarea class="form-control" id="impl1-input">?x + ?y</textarea>
+          <button class="btn btn-success" id="impl1-btn"><i class="fa fa-check"></i>Check snippet</button>
+          <script>$(function() { $("#impl1-btn").trigger("click"); });</script>
+          
+          <p style="clear:both;">The program is well-typed. The type system reports the following 
+            type and coeffect information:</p>
+          
+          <p id="impl1-judgement" data-tex-color-prefix="l"></p>
+          <p id="impl1-judgement-temp" style="display:none"></p>
+          
+          <p>Here you can enter the values</p>
+          <div id="impl1-playground">
+          </div>
+          <div style="clear:both"></div>
         </div>
-        <pre id="impl1-output">(Output goes here...)</pre>
-      </div>
-    </div>
-    <div class="row">
-      <div class="col-md-12">
-        <p id="impl1-judgement"></p>
-        <p id="impl1-judgement-temp" style="display:none"></p>
       </div>
     </div>
   </div>
@@ -552,6 +571,7 @@ $$$
 \definecolor{typ}{RGB}{255,202,79}
 \definecolor{kvd}{RGB}{127,165,255}
 
+>>>>
 <h3>Plan langauge</h3>
 
 $$$
@@ -574,6 +594,7 @@ $$$
   {\Gamma {\scriptsize \;@\;} {\color{lcoeff} r} \vdash {\color{lkvd} \text{fun}}~x \rightarrow e : {\color{ltyp} \tau_1} \xrightarrow{~\color{lcoeff} s~} {\color{ltyp} \tau_2}}
 
 </div>
+<<<<
 
 </div>
 </div>
@@ -638,8 +659,8 @@ Long scrolling text here... Ovi lispmd idr. Blah goo bar foor foo.  Ovi lispmd i
   </div>
   <div class="row">
     <div class="col-md-12">
-      <p id="df1-judgement"></p>
-      <p id="df1-judgement-temp" style="display:none"></p>
+      <p id="df1-typetree"></p>
+      <p id="df1-typetree-temp" style="display:none"></p>
     </div>
   </div>
 </div>

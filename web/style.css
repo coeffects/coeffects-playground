@@ -183,16 +183,18 @@ nav.affix .ia-ui-menu li {
 .body h2 {
   font: 20pt Kreon,'Times New Roman',times,serif;
 }
-.body .lside h2 {  
-  float:left;
-  margin:0px 0px 0px -240px;
-  width:220px;
-}
-.body .rside h2 {  
-  float:right;
-  margin:0px -240px 0px 0px;
-  width:220px;
-  text-align:right;
+@media (min-width: 992px) {
+  .body .lside h2 {  
+    float:left;
+    margin:0px 0px 0px -240px;
+    width:220px;
+  }
+  .body .rside h2 {  
+    float:right;
+    margin:0px -240px 0px 0px;
+    width:220px;
+    text-align:right;
+  }
 }
 .new-section {
   margin-top:30px;
@@ -212,6 +214,15 @@ nav.affix .ia-ui-menu li {
   color:white;
   padding:20px;
   margin:20px;
+}
+.body .callout code {
+  background-color:transparent;
+  color:#FA89AD;
+}
+.body .callout .form-control {
+  color:#f0f0f0;
+  background:#202020;
+  border-color:#606060;
 }
 /*
 .body strong {
@@ -242,13 +253,69 @@ nav.affix .ia-ui-menu li {
   display:inline-block;
   color:white;
   font-size:12pt;
-  margin:15px 0px 0px 0px;
   cursor:pointer;
+  float:right;
+  margin:0px 10px 0px 0px;
 }
+@media (min-width: 992px) {
+  .body .ia-ui-circle { 
+    float:none;
+    margin:15px 0px 0px 0px;
+  }
+}
+
+/* Elements for running coeffect code snippets */
+.pre-play {
+  position:relative;
+}
+.pre-play a {
+  cursor:pointer;
+  position:absolute;
+  right:25px;
+  top:8px;
+  font:10pt 'PT Sans',verdana,sans-serif;
+  color:#909090;
+  text-decoration:none;
+}
+.pre-play a i {
+  margin-right:2px;
+}
+.pre-play a:hover {
+  color:#505050;
+  text-decoration:none;
+}
+
+/* .... */
 
 .btn { background:black; color:white; }
 .btn:focus, .btn.hover, .btn:hover { background:#404040 !important; color:white !important; }
 
+.coeffect-playground button i {
+  margin-right:10px;
+}
+.coeffect-playground table {
+  margin:5px 4% 5px 4%;
+  width:92%;
+}
+.coeffect-playground button {
+  text-align:center;
+  float:right;
+  border-color:#808080;
+  background:#202020;
+  min-width:150px;
+  margin:0px 4% 10px 0px;
+}
+.coeffect-playground button:focus, .coeffect-playground button.hover, .coeffect-playground button:hover { 
+  background:#404040 !important; color:white !important; 
+  border-color:#808080;
+}
+
+.coeffect-playground textarea {
+  font-family:Inconsolata;
+  height:100px;
+  margin:15px 4% 5px 4%;
+  width:92%;
+}
 #playground-callout i {
   float:left;
   font-size:200%;
@@ -375,12 +442,11 @@ div.tip {
 	display:none;
   color:#000000;
 }
-table.pre pre {
-  padding:0px;
-  margin:0px;
-  border:none;
-} 
-table.pre, pre.fssnip, pre {
+
+table.pre {
+  width:100%;
+}
+pre {
   line-height:13pt;
   border:1px solid #d8d8d8;
   border-collapse:separate;
@@ -394,21 +460,6 @@ table.pre, pre.fssnip, pre {
 pre.fssnip code {
   font:12pt 'Inconsolata',consolas,monospace;
 }
-table.pre pre {
-  padding:0px;
-  margin:0px;
-  border-radius:0px;
-  width: 100%;
-}
-table.pre td {
-  padding:0px;
-  white-space:normal;
-  margin:0px;
-}
-table.pre td.lines {
-  width:30px;
-}
-
 pre, code {
   font:13pt 'Inconsolata',consolas,monospace;
 }

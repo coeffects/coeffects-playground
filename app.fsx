@@ -105,25 +105,23 @@ module Client =
     | CoeffectKind.ImplicitParams, (_, c, _) ->
         let coeffs = Solver.ImplicitParams.evalCoeffect Map.empty c |> Set.toList
         let pl = jq(playground)
-        let fg = el "div" [ ("class","form-group") ] [] |> appendTo pl
+        let fg = el "table" [] [] |> appendTo pl
         let inputs = 
           [ for c in coeffs -> 
-              let input = el "input" [ ("type","text"); ("class","form-control") ] []
-              let div = el "div" [ ("class","input-group-addon") ] [] |> css [ ("min-width", "70px") ] |> html ("?" + c + " = ")
-              el "div" [ ("class","input-group") ] [ div; input ] |> css [ ("margin-bottom", "10px") ] |> appendTo fg |> ignore
+              let input = el "input" [ ("type","text"); ("placeholder", "0"); ("class","form-control") ] []
+              let label = el "td" [] [] |> html ("?" + c + " = ")
+              el "tr" [] [ label; el "td" [] [input] ] |> appendTo fg |> ignore
               c, input ]
 
-        el "div" [("class","form-group")] [
-          el "button" [ ("class", "btn btn-success") ] [] 
-          |> html "Run"
-          |> click (fun () ->
-            let input = Value.ImplicitsComonad(Value.Unit, Map.ofList [ for c, i in inputs -> c, Value.Integer(1 * unbox(i._val())) ])
-            let res = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle
-            match res with 
-            | Value.Integer n -> Globals.window.alert(string n)
-            | _ -> Globals.window.alert("Something weird")
-          )
-        ] |> appendTo pl |> ignore
+        el "button" [ ("class", "btn btn-success") ] [] 
+        |> html "<i class='fa fa-play'></i>Run snippet"
+        |> click (fun () ->
+          let input = Value.ImplicitsComonad(Value.Unit, Map.ofList [ for c, i in inputs -> c, Value.Integer(1 * unbox(i._val())) ])
+          let res = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle
+          match res with 
+          | Value.Integer n -> Globals.window.alert(string n)
+          | _ -> Globals.window.alert("Something weird") )
+        |> appendTo pl |> ignore
     | _ -> ()
 
 // ------------------------------------------------------------------------------------------------
@@ -136,9 +134,9 @@ module Client =
   [<JSEmitInline("MathJax.Hub.Queue({0});")>]
   let queueAction(f:unit -> unit) : unit = failwith "!"
 
-  let setupTypeDerivation prefix kind typed =
-    let judgement = Globals.document.getElementById(prefix + "-judgement") :?> HTMLPreElement
-    let judgementTemp = Globals.document.getElementById(prefix + "-judgement-temp") :?> HTMLPreElement
+  let setupTypeDerivation clr prefix kind typed =
+    let typetree = Globals.document.getElementById(prefix + "-typetree") :?> HTMLPreElement
+    let typetreeTemp = Globals.document.getElementById(prefix + "-typetree-temp") :?> HTMLPreElement
 
     let rec findSubExpression locations (Typed.Typed(_, e) as te) : Typed<CoeffVars * Coeffect * Type> = 
       match locations, e with
@@ -152,11 +150,12 @@ module Client =
 
     let rec typeset () =
       let e = findSubExpression (List.rev locations.Value) typed
-      let arr2 : string[] = [| |]
+      let arr : string[] = [| |]
       let root = locations.Value |> List.isEmpty
-      let arr2' = MathJax.derivation kind root e arr2
-      judgementTemp.innerHTML <- "\\[" + arr2.join("") + "\\]"
-      typeSetElement (prefix + "-judgement-temp")
+      MathJax.derivation kind root e arr |> ignore
+      let tex = arr.join("").Replace("{\\color{", "{\\color{" + clr)
+      typetreeTemp.innerHTML <- "\\[" + tex + "\\]"
+      typeSetElement (prefix + "-typetree-temp")
 
       let getNewPath (jo:JQuery) =
         let index = jq("#" + prefix + " .mtable").index(jo)
@@ -178,8 +177,8 @@ module Client =
         jo.css("backgroundColor", clr) |> ignore
   
       queueAction(fun () ->
-        judgement.innerHTML <- judgementTemp.innerHTML
-        judgementTemp.innerHTML <- ""
+        typetree.innerHTML <- typetreeTemp.innerHTML
+        typetreeTemp.innerHTML <- ""
           
         jq("#" + prefix + " .mtable").css("cursor", "pointer") |> ignore
         let currIndex = jq("#" + prefix + " .mtable").length - (if root then 1.0 else 2.0)
@@ -202,7 +201,25 @@ module Client =
     typeset ()
 
 // ------------------------------------------------------------------------------------------------
-// Create a UI where the user can browse the typing derivation
+// Create simple element showing the final typing judgement
+// ------------------------------------------------------------------------------------------------
+
+  let setupJudgement clr prefix kind typed =
+    let judgement = Globals.document.getElementById(prefix + "-judgement") :?> HTMLPreElement
+    let judgementTemp = Globals.document.getElementById(prefix + "-judgement-temp") :?> HTMLPreElement
+
+    let arr : string[] = [| |]
+    MathJax.judgement kind typed arr |> ignore
+    let tex = arr.join("").Replace("{\\color{", "{\\color{" + clr)
+    judgementTemp.innerHTML <- "\\[" + tex + "\\]"
+    typeSetElement (prefix + "-judgement-temp")
+
+    queueAction(fun () ->
+      judgement.innerHTML <- judgementTemp.innerHTML
+      judgementTemp.innerHTML <- "")
+
+// ------------------------------------------------------------------------------------------------
+// Display the formatted HTML in a <pre> tag
 // ------------------------------------------------------------------------------------------------
 
   let setupHtmlOutput prefix view kind e =
@@ -217,29 +234,38 @@ module Client =
 
   let hasFeature prefix feature = 
      null <> box (Globals.document.getElementById(prefix + "-" + feature))
-  
+
+  let tryGetFeature prefix feature attr = 
+    let el = Globals.document.getElementById(prefix + "-" + feature)
+    if box el = null then None else 
+    let attrval = el.attributes.getNamedItem("data-" + attr)
+    if box attrval = null then Some("") else Some(attrval.value)
+
+  let typeCheckSoruce (source:string) kind mode =  
+    let (Parsec.Parser lex) = Lexer.lexer
+    let tokens = lex (List.ofArray (source.ToCharArray())) |> Option.get |> snd
+    let tokens = tokens |> filter (function Token.White _ -> false | _ -> true)
+    let (Parsec.Parser pars) = Parser.expr ()
+    let expr = pars tokens |> Option.get |> snd
+    TypeChecker.typeCheck (fun _ _ -> failwith "Unexpected built-in!") kind mode expr
+    // TODO: Rename all type/coeffect variables before translation to remove clashes
+
   let setup kind mode prefix = 
     let btn = Globals.document.getElementById(prefix + "-btn") :?> HTMLButtonElement
     let input = Globals.document.getElementById(prefix + "-input") :?> HTMLTextAreaElement
 
 
     btn.addEventListener_click(fun e ->
-      let (Parsec.Parser lex) = Lexer.lexer
-      let source = input.value
-
-      // TODO: Rename all type/coeffect variables before translation to remove clashes
-      
-      let tokens = lex (List.ofArray (source.ToCharArray())) |> Option.get |> snd
-      let tokens = tokens |> filter (function Token.White _ -> false | _ -> true)
-      let (Parsec.Parser pars) = Parser.expr ()
-      let expr = pars tokens |> Option.get |> snd
-      let typed = TypeChecker.typeCheck (fun _ _ -> failwith "!") kind mode expr
+      let typed = typeCheckSoruce input.value kind mode
   
       if hasFeature prefix "output" then
         setupHtmlOutput prefix "output" kind typed
 
-      if hasFeature prefix "judgement" then
-        setupTypeDerivation prefix kind typed
+      tryGetFeature prefix "typetree" "tex-color-prefix" 
+      |> Option.iter (fun clr -> setupTypeDerivation clr prefix kind typed)
+
+      tryGetFeature prefix "judgement" "tex-color-prefix" 
+      |> Option.iter (fun clr -> setupJudgement clr prefix kind typed)
 
       if mode = CoeffectMode.Flat then      
         let transle  = 
@@ -258,6 +284,38 @@ module Client =
     )
 
   let main () =
+    let counter = ref 0
+    jq("code[lang*='coeffects']").each(fun _ _ ->
+      incr counter
+      let lang = jthis().attr("lang")
+      let source = jthis().text()
+      let kind = 
+        if lang.Contains("impl") then CoeffectKind.ImplicitParams
+        elif lang.Contains("df") then CoeffectKind.PastValues
+        else failwith ("Unknown kind: " + lang)
+      let mode = 
+        if lang.Contains("flat") then CoeffectMode.Flat
+        elif lang.Contains("struct") then CoeffectMode.Structural
+        else failwith ("Unknown mode: " + lang)
+
+      let link = jq("<a><i class=\"fa fa-pencil-square-o\"></i> load</a>")
+      jthis().parent().append(link).addClass("pre-play") |> ignore
+      link.on("click", fun _ _ ->
+        let rec findEditor (je:JQuery) = 
+          let ed = unbox<string> (je.data("coeff-editor"))
+          if ed <> null then ed
+          else findEditor (je.parent())
+        let ed = findEditor (jthis())
+        jq("#" + ed + "-input")._val(source) |> ignore
+        jq("#" + ed + "-btn").trigger("click") |> ignore
+        null) |> ignore
+
+      let typed = typeCheckSoruce source kind mode
+      let prefix = "fmtpre" + (string counter.Value)
+      jthis().html(Html.print (Html.printExpr kind prefix 0 [] typed)) |> ignore
+      null
+    ) |> ignore
+
     jq(".coeff-demo").each(fun _ _ ->
       let kind = 
         match jthis().data("coeff-kind") :?> string with
