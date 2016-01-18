@@ -143,7 +143,7 @@ let rec checkPattern ctx (TypedPat((), pat)) =
       TypedPat(justTyp (Type.Tuple(List.map ptyp typedPats)), Pattern.Tuple(typedPats)), ctx, vars
 
   | Pattern.QVar _ ->
-      failwith "The ?v pattern is allowed only in let bindings."
+      Errors.syntaxError "The <code>?param</code> pattern is allowed only in let bindings, but not in nested patterns."
 
 /// The type checking function that reconstructs types and collects type & coeffect constraints
 let rec check ctx (Typed((), e)) : Typed<CoeffVars * Coeffect * Type> * ResultContext = 
@@ -170,7 +170,7 @@ let rec check ctx (Typed((), e)) : Typed<CoeffVars * Coeffect * Type> * ResultCo
   match e with 
   | Expr.Let(TypedPat((), Pattern.QVar qv), arg, body) ->
       if ctx.CoeffectKind <> CoeffectKind.ImplicitParams then   
-        failwith "Implicit parameter binding in another expression"
+        Errors.syntaxError "The <code>?param</code> pattern is allowed only when using implicit parameter coeffects."
 
       // Add coeffect constraint `{ ?qv } + coeffVar = coeff body` and use
       // `coeffVar + (coeffVar * coeff arg)` as the coeffect of the let binding
@@ -188,7 +188,7 @@ let rec check ctx (Typed((), e)) : Typed<CoeffVars * Coeffect * Type> * ResultCo
 
   | Expr.QVar(name) ->
       if ctx.CoeffectKind <> CoeffectKind.ImplicitParams then 
-        failwith "Implicit parameter access in another expression"
+        Errors.syntaxError "The <code>?param</code> pattern is allowed only when using implicit parameter coeffects."
       let typ = 
         match ctx.Variables.TryFind name with 
         | Some typ -> typ
@@ -202,7 +202,7 @@ let rec check ctx (Typed((), e)) : Typed<CoeffVars * Coeffect * Type> * ResultCo
   // DATAFLOW COMPUTATIONS
   | Expr.Prev(e) ->
       if ctx.CoeffectKind <> CoeffectKind.PastValues then 
-        failwith "Prev keyword in another expression"
+        Errors.syntaxError "The <code>prev</code> keyword is allowed only when using dataflow coeffects."
       let ebody, res = check ctx e
       let cflat = Coeffect.Seq(Coeffect.Past 1, coeff ebody)
       let cstruct = cvars ebody |> Structural.mapCoeff (fun c -> Coeffect.Seq(Coeffect.Past 1, c))
@@ -214,7 +214,7 @@ let rec check ctx (Typed((), e)) : Typed<CoeffVars * Coeffect * Type> * ResultCo
       let typ = 
         match ctx.Variables.TryFind name with
         | Some typ -> typ
-        | None -> failwith ("Variable '" + name + "' not in scope.")
+        | None -> Errors.syntaxError ("Variable <code>" + name + "</code> is not in scope. Check that the name is correct!")
       let cflat = Coeffect.Use
       let cstruct = 
         Structural.ofVars Coeffect.Ignore ctx.Variables 
@@ -254,7 +254,7 @@ let rec check ctx (Typed((), e)) : Typed<CoeffVars * Coeffect * Type> * ResultCo
         | TypedPat((), Pattern.Var v) -> Structural.remove v (cvars body)
         | _ -> 
           if (ctx.CoeffectMode &&& CoeffectMode.Structural) = CoeffectMode.Structural then 
-            failwith "Structural langauge supports only simple patterns"
+            Errors.syntaxError "Structural coeffect langauge only supports simple variable patterns."
           else Coeffect.None, Structural.ofVars Coeffect.None ctx.Variables
 
       // Annotate the function type with both flat & structural coeffect
@@ -300,7 +300,7 @@ let rec check ctx (Typed((), e)) : Typed<CoeffVars * Coeffect * Type> * ResultCo
               (cvars earg |> Structural.mapCoeff (fun c -> Coeffect.Seq(c, carg)))
         | _ ->
           if (ctx.CoeffectMode &&& CoeffectMode.Structural) = CoeffectMode.Structural then 
-            failwith "Structural langauge supports only simple patterns"
+            Errors.syntaxError "Structural coeffect langauge only supports simple variable patterns."
           else Structural.ofVars Coeffect.None ctx.Variables
 
       typed cstruct cflat (typ ebody) (Expr.Let(typedPat, earg, ebody)) res
@@ -336,7 +336,6 @@ let typeCheck builtins kind mode expr : Typed<CoeffVars * Coeffect * Type> =
   let annotated, ctx = check (Context.empty builtins kind mode) expr
   let solved, cequals = solve ctx.TypeConstraints Map.empty []
     
-  // for l, r in cequals do printfn "\n  %A\n= %A" l r
   let normalizeCoeffect = 
     match kind with
     | CoeffectKind.Embedded c ->
@@ -344,7 +343,7 @@ let typeCheck builtins kind mode expr : Typed<CoeffVars * Coeffect * Type> =
           match c with
           | CoeffectKind.ImplicitParams -> ImplicitParams.evalCoeffect Map.empty c1 = ImplicitParams.evalCoeffect Map.empty c2
           | CoeffectKind.PastValues -> Dataflow.evalCoeffect Map.empty c1 = Dataflow.evalCoeffect Map.empty c2
-          | _ -> failwith "Wrong embedded coeffect"
+          | _ -> Errors.unexpected "When using <code>CoeffectKind.Embedded</code>, the nested coeffect must be dataflow or implicit paramters."
 
         let solved = 
           [ for c1, c2 in cequals do
@@ -353,17 +352,14 @@ let typeCheck builtins kind mode expr : Typed<CoeffVars * Coeffect * Type> =
               | Coeffect.Variable v, Coeffect.Closed o
               | Coeffect.Closed o, Coeffect.Variable v -> yield v, o
               | l, r when equal l r -> ()
-              | _ -> failwith "Cannot resolve constraint." ] |> Map.ofSeq
-              //| l, r -> failwithf "Cannot resolve constraint\n  %A\n= %A" l r ] |> Map.ofSeq
+              | c1, c2 -> Errors.invalidConstraint "Invalid constraint in translated expression." c1 c2 ] |> Map.ofSeq
         let normalizeNone c = 
           match c with 
           | Coeffect.None -> Coeffect.None
           | Coeffect.Closed c -> c
           | Coeffect.Variable s when solved.ContainsKey s -> solved.[s]
           | Coeffect.Variable s -> Coeffect.None
-          | c -> 
-            failwith "Cannot normalize coeffect"
-            //failwithf "Cannot normalize coeffect: %A" c
+          | c -> Errors.invalidCoeffect "Cannot normalize coeffect in translated expression." c
         normalizeNone
 
     | CoeffectKind.ImplicitParams -> 

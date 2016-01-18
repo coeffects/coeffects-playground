@@ -27,23 +27,36 @@ let rec solve constraints assigns cequals =
       //printfn "COMO: %A\n  = %A" (Type.Comonad(c1, t1)) (Type.Comonad(c2, t2))
       solve ((t1,t2) :: rest) assigns ((c1, c2)::cequals)
   | (t1, t2)::_ ->
-      //failwithf "Cannot unify types:\n - %A\n - %A" t1 t2
-      failwith "Cannot unify types"
+      Errors.typeMismatch t1 t2
 
 /// Replace solved type variables with the assigned types
 /// (and also transform coeffects using the given function)
-let rec normalizeType evalc solutions typ =
-  match typ with 
-  | Type.Comonad(c, t) -> Type.Comonad(evalc c, normalizeType evalc solutions t)
-  | Type.Variable s -> 
-      match Map.tryFind s solutions with
-      | Some t -> normalizeType evalc solutions t
-      | None -> Type.Variable s
-  | Type.Tuple(ts) ->
-      Type.Tuple(List.map (normalizeType evalc solutions) ts)
-  | Type.Primitive s -> typ
-  | Type.Func((cf, cs), l, r) -> 
-      Type.Func((evalc cf, evalc cs), normalizeType evalc solutions l, normalizeType evalc solutions r)
+let normalizeType evalc solutions typ =
+  
+  // Generate nice names for free type variables
+  let variableName n = if n <= 25 then (char (97 + n)).ToString() else "a" + (string (n - 26))
+  let renamedVars = ref Map.empty
+  let getVariableMapping (s:string) = 
+    match Map.tryFind s renamedVars.Value with
+    | Some s -> s
+    | None -> 
+        renamedVars.Value <- Map.add s (variableName renamedVars.Value.Count) renamedVars.Value
+        renamedVars.Value.[s]
+
+  // Recursively normalize the type
+  let rec loop evalc solutions typ =
+    match typ with 
+    | Type.Comonad(c, t) -> Type.Comonad(evalc c, loop evalc solutions t)
+    | Type.Variable s -> 
+        match Map.tryFind s solutions with
+        | Some t -> loop evalc solutions t
+        | None -> Type.Variable (getVariableMapping s)
+    | Type.Tuple(ts) ->
+        Type.Tuple(List.map (loop evalc solutions) ts)
+    | Type.Primitive s -> typ
+    | Type.Func((cf, cs), l, r) -> 
+        Type.Func((evalc cf, evalc cs), loop evalc solutions l, loop evalc solutions r)
+  loop evalc solutions typ 
 
 // ------------------------------------------------------------------------------------------------
 // Utilities for constraint solving
@@ -102,8 +115,8 @@ module ImplicitParams =
     | Coeffect.Split(c1, c2)
     | Coeffect.Seq(c1, c2) -> Set.union (evalCoeffect assigns c1) (evalCoeffect assigns c2)
     | Coeffect.Variable s -> defaultArg (Map.tryFind s assigns) Set.empty
-    | Coeffect.None -> failwith "Unexpected none in implicit parameter coeffects"
-    | Coeffect.Past _ -> failwith "Unexpected past in implicit parameter coeffects"
+    | Coeffect.None -> Errors.unexpected "Unexpected <code>Coeffect.None</code> in implicit parameter coeffects in <code>evalCoeffect</code>."
+    | Coeffect.Past _ -> Errors.unexpected "Unexpected <code>Coeffect.Past</code> in implicit parameter coeffects in <code>evalCoeffect</code>."
 
   /// Solve coeffect constraints for implict parameters. Start with empty set for each parameter,
   /// iteratively adapt the assignments using the generated constraints (and using implicit 
@@ -143,7 +156,7 @@ module ImplicitParams =
             loop (addAssignment v (rc - set[p]) assigns) rest
 
         | [] -> assigns
-        | c -> failwith "Invalid constraint"
+        | (c1, c2)::_ -> Errors.invalidConstraint "Cannot solve implicit parameter constraints." c1 c2
             
       loop assigns constrs)
 
@@ -164,9 +177,9 @@ module Dataflow =
     | Let (+) (op, Coeffect.Seq(c1, c2)) -> op (evalCoeffect assigns c1) (evalCoeffect assigns c2)
     | Coeffect.Past(n) -> n
     | Coeffect.Variable v -> defaultArg (Map.tryFind v assigns) 0
-    | Coeffect.ImplicitParam _ -> failwith "Unexpected implicit param value in dataflow coeffect"
-    | Coeffect.None -> failwith "Unexpected none in dataflow coeffects"
-    | _ -> failwith "Unexpected coeffect value"
+    | Coeffect.ImplicitParam _ -> Errors.unexpected "Unexpected <code>Coeffect.ImplicitParam</code> in dataflow coeffects in <code>evalCoeffect</code>."    
+    | Coeffect.None -> Errors.unexpected "Unexpected <code>Coeffect.None</code> in implicit parameter coeffects in <code>evalCoeffect</code>."
+    | _ -> Errors.unexpected "Unexpected coeffect value in implicit parameter coeffects in <code>evalCoeffect</code>."
 
 
   /// Solve coeffect constraints for data-flow. Start with 0 for all variables and
@@ -196,6 +209,6 @@ module Dataflow =
             let n = evalCoeffect assigns r
             loop (addAssignment v n assigns) rest
         | [] -> assigns
-        | c -> failwith "Invalid constraint"
+        | (c1, c2)::_ -> Errors.invalidConstraint "Cannot solve dataflow constraints." c1 c2
       loop assigns constrs)
   

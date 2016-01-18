@@ -293,9 +293,20 @@ nav.affix .ia-ui-menu li {
 .coeffect-playground button i {
   margin-right:10px;
 }
+.coeffect-playground table td:last-child {
+  width:100%;
+}
 .coeffect-playground table {
   margin:5px 4% 5px 4%;
   width:92%;
+}
+.coeffect-playground table td {
+  padding-bottom:3px;
+}
+.coeffect-playground td.label {
+  text-align:right;
+  display:block;
+  padding-top:8px;
 }
 .coeffect-playground button {
   text-align:center;
@@ -310,12 +321,14 @@ nav.affix .ia-ui-menu li {
   border-color:#808080;
 }
 
-.coeffect-playground textarea {
+.coeffect-playground textarea.form-control {
+  font-size:12pt;
   font-family:Inconsolata;
-  height:100px;
+  height:120px;
   margin:15px 4% 5px 4%;
   width:92%;
 }
+
 #playground-callout i {
   float:left;
   font-size:200%;
@@ -437,7 +450,7 @@ span.omitted {
 div.tip {
 	background:#e5e5e5;
   border-radius:4px;
-  font:9pt 'Open Sans', arial, sans-serif;
+  font:10pt 'Open Sans', arial, sans-serif;
 	padding:6px 8px 6px 8px;
 	display:none;
   color:#000000;

@@ -7,12 +7,12 @@ function hideTip(evt, name, unique) {
     currentTip = null;
 }
 
-function findPos(obj) {
+function findPos(obj, stopRelative) {
     var curleft = 0;
     var curtop = obj.offsetHeight;
     while (obj) {
         var pos = $(obj).css("position");
-        if (pos == "relative" || pos == "absolute") break;
+        if (stopRelative && (pos == "relative" || pos == "absolute")) break;
         curleft += obj.offsetLeft;
         curtop += obj.offsetTop;
         obj = obj.offsetParent;
@@ -25,13 +25,14 @@ function hideUsingEsc(e) {
     hideTip(e, currentTipElement, currentTip);
 }
 
-function showTip(evt, name, unique, owner) {
+function showTip(evt, name, unique, owner, stopRelative) {
     document.onkeydown = hideUsingEsc;
     if (currentTip == unique) return;
     currentTip = unique;
     currentTipElement = name;
 
-    var pos = findPos(owner ? owner : (evt.srcElement ? evt.srcElement : evt.target));
+    if (stopRelative == null) stopRelative = true;
+    var pos = findPos(owner ? owner : (evt.srcElement ? evt.srcElement : evt.target), stopRelative);
     var posx = pos[0];
     var posy = pos[1];
     
@@ -41,4 +42,18 @@ function showTip(evt, name, unique, owner) {
     el.style.left = posx + "px";
     el.style.top = posy + "px";
     el.style.display = "block";
+}
+
+var tipIndex = 0;
+
+function setupTooltips() {
+  $("pre span[title]").each(function() { 
+    var idx = tipIndex++;
+    var tip = "val " + $(this).text() + " : " + $(this).attr("title");
+    $("<div class='tip' id='dyat" + idx + "'>" + tip + "</div>").appendTo($(document.body));
+    $(this)
+      .on("mouseenter", function() { showTip(event, "dyat" + idx, idx, null, false); })
+      .on("mouseleave", function() { hideTip(event, "dyat" + idx, idx); })
+      .attr("title", null);
+  });
 }

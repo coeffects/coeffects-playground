@@ -8,25 +8,56 @@ module Coeffects.Evaluation
 open Coeffects
 open Coeffects.Ast
 
+// ------------------------------------------------------------------------------------------------
+// List helper functions & FunScript bug workaround for unzip
+// ------------------------------------------------------------------------------------------------
+
+let rec skip n l = 
+  match n, l with
+  | 0, l -> l
+  | n, x::xs -> skip (n-1) xs
+  | _ -> Errors.evaluationFailed "Insufficient number of elements in a list."
+
+let take n (l:'a list) = 
+  let rec loop acc n (l:'a list) =
+    match n, l with
+    | 0, _ -> List.rev acc
+    | n, x::xs -> loop (x::acc) (n-1) xs
+    | _ -> Errors.evaluationFailed "Insufficient number of elements in a list."
+  loop [] n l
+
+let unzip l = 
+  List.foldBack (fun (x,y) (xs,ys) -> x::xs, y::ys) l ([], [])
+
+// ------------------------------------------------------------------------------------------------
+// Evaluation itself
+// ------------------------------------------------------------------------------------------------
+
+/// Represents values in the coeffect evaluator
 type Value =
+  // Standard functional language values
   | Unit
   | Integer of int
   | Function of (Value -> Value)
   | Tuple of Value list
-
+  // Comonadic values
   | ImplicitsComonad of Value * Map<string, Value>
   | ListComonad of Value list
 
+
+/// Variable assignment kept as a state during the evaluation 
 type EvaluationContext = 
   { Variables : Map<string, Value> 
     Kind : CoeffectKind }
 
+
+/// Assign values to variables bound in a pattern & return new context
 let rec bind value (TypedPat(_, pattern)) vars = 
   match pattern, value with
   | Pattern.Var n, v -> Map.add n v vars
   | Pattern.Tuple pats, Value.Tuple vals when pats.Length = vals.Length ->
       List.zip pats vals |> List.fold (fun ctx (p, v) -> bind v p ctx) vars
-  | _ -> failwith "Pattern does not match value"        
+  | _ -> Errors.evaluationFailed "The provided value does not match the specified pattern."
 
 let operators = 
   Map.ofList [ "+", (+); "-", (-); "*", (*); "/", (/); "^", pown ] 
@@ -34,9 +65,11 @@ let operators =
 let restrict (m:Map<string, Value>) s = 
   Map.ofList [ for v in Set.toList s -> v, Map.find v m ]
 
-//let (|Fail|) s v = failwithf "%s %A" s v
-let (|Fail|) s _ = failwith s
+let (|Fail|) s _ = Errors.evaluationFailed s
 
+
+/// Evaluate primitive operations of implicit parameter coeffect language
+/// Returns `None` when the construct is not a comonadic primitive 
 let evalImplicits ctx (Typed(_, expr)) = 
   match expr with
   | Expr.Builtin("merge", _) ->
@@ -72,23 +105,9 @@ let evalImplicits ctx (Typed(_, expr)) =
 
   | _ -> None
 
-let rec skip n l = 
-  match n, l with
-  | 0, l -> l
-  | n, x::xs -> skip (n-1) xs
-  | _ -> failwith "Not enough elements"
 
-let take n (l:'a list) = 
-  let rec loop acc n (l:'a list) =
-    match n, l with
-    | 0, _ -> List.rev acc
-    | n, x::xs -> loop (x::acc) (n-1) xs
-    | _ -> failwith "Not enough elements"
-  loop [] n l
-
-/// Workaround for a FunScript bug
-let unzip l = List.foldBack (fun (x,y) (xs,ys) -> x::xs, y::ys) l ([], [])
-
+/// Evaluate primitive operations of dataflow coeffect language
+/// Returns `None` when the construct is not a comonadic primitive 
 let evalDataflow ctx (Typed(_, expr)) = 
   match expr with
   | Expr.Builtin("merge", _) ->
@@ -122,13 +141,16 @@ let evalDataflow ctx (Typed(_, expr)) =
    
   | _ -> None
 
+
+/// Evaluate standard functional language constructs and non-comonadic primitives.
+/// Fails when the expression does not match, so this should be called as the last option.
 let rec evalPrimitive ctx (Typed(_, expr)) =
   match expr with
   | Expr.Binary(op, l, r) ->
-      let op = match operators.TryFind op with Some(o) -> o | _ -> failwith "Unexpected operator"
+      let op = match operators.TryFind op with Some(o) -> o | _ -> Errors.evaluationFailed "Unexpected operator in binary expression."
       match eval ctx l, eval ctx r with
       | Value.Integer l, Value.Integer r -> Value.Integer(op l r)
-      | _ -> failwith "Expected two numbers"
+      | _ -> Errors.evaluationFailed "Cannot evaluate binary operation. Expected two numerical values."
 
   | Expr.Tuple(args) ->
       Value.Tuple(List.map (eval ctx) args)
@@ -139,7 +161,7 @@ let rec evalPrimitive ctx (Typed(_, expr)) =
   | Expr.App(e1, e2) ->
       match eval ctx e1, eval ctx e2 with
       | Value.Function f, v -> f v
-      | _ -> failwith "Expected function"
+      | _ -> Errors.evaluationFailed "Cannot evaluate function application. Left-hand side is not a function!"
 
   | Expr.Fun(pat, body) ->
       Value.Function(fun v ->
@@ -149,20 +171,25 @@ let rec evalPrimitive ctx (Typed(_, expr)) =
       Value.Function(fun v ->
         match v with
         | Value.Tuple [v1; v2] -> if op = "fst" then v1 else v2
-        | _ -> failwith "Expected two-element tuple")
+        | _ -> Errors.evaluationFailed "Cannot evaluate tuple access. Right-hand side is not a tuple!")
 
-  | Expr.Var(v) -> Map.find v ctx.Variables
+  | Expr.Var(v) -> 
+      match Map.tryFind v ctx.Variables with
+      | Some v -> v
+      | _ -> Errors.evaluationFailed "Variable access failed. Variable is not in scope."
+
   | Expr.Builtin("input", _) -> Map.find "input" ctx.Variables
   | Expr.Integer n -> Value.Integer n
-  //| e -> failwithf "%A" e
-  | _ -> failwith "Eval failed"
+  | _ -> Errors.evaluationFailed "Evaluation failed. Unexpected expression."
 
+
+/// Evaluate a translated expression in a coeffect programming language
 and eval ctx expr =
   let special = 
     match ctx.Kind with
     | CoeffectKind.ImplicitParams -> evalImplicits ctx expr 
     | CoeffectKind.PastValues -> evalDataflow ctx expr 
-    | _ -> failwith "Can only eval imploicits or past values"
+    | _ -> Errors.evaluationFailed "Evaluation failed. The evaluation kind must be <code>ImplicitParams</code> or <code>PastValues</code>."
   match special with
   | None -> evalPrimitive ctx expr
   | Some v -> v

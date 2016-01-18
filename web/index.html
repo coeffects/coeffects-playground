@@ -414,7 +414,7 @@
     <h3 style="margin-top:0px">Implicit parameters</h3>
     
     Here, you can play with two simple coeffect languages. A language with 
-    <abbr title="This is inspired by Haskell&quote;s implicit parameters introduced by Lewis et al. (2000)">implicit 
+    <abbr title="This is inspired by Haskell's implicit parameters introduced by Lewis et al. (2000)">implicit 
     parameters</abbr> shows how coeffects track additional contextual information such as
     available resources (GPS, network printer) or available device features (file system, network). 
     In our small demo, resources are written as `?size`.
@@ -466,69 +466,106 @@
     
     </div>
   </div>
-  <div class="container coeff-demo" data-coeff-mode="flat" data-coeff-kind="implicit" id="impl1">
-    <div class="row">
-      <div class="col-md-6" data-coeff-editor="impl1">
-        >>>>
-        
-        ### Implicit parameters tutorial
-        
-        Implicit parameters are the simplest example to show how resource tracking works.
-        In a langauge with implicit parameters you can use `?foo`
-        
-            [lang=coeffects-flat-impl]
-            ?x + ?y
-        
-        They are both lexically and dynamically scoped
-        
-            [lang=coeffects-flat-impl]
-            let f = (fun x -> x + ?y + ?z) in
-            let ?y = 10 in f 5
-    
-        but you can also write
+  
+  <div class="row coeff-demo" data-coeff-mode="flat" data-coeff-kind="implicit" id="impl1">
+    <div class="col-md-6" data-coeff-editor="impl1">
+      >>>>
+      
+      Implicit parameters tutorial
+      ----------------------------
+      
+      Implicit parameters are the simplest example of coeffects. In our first langauge, 
+      you can use `?foo` to access a value that has to be provided by the environment.
+      We'll use numbers, but the same would work for resources like GPS sensors or printers:
+      
+          [lang=coeffects-flat-impl]
+          ?fst + ?snd
+      
+      When you create a function, it can read parameters that are available in the 
+      current scope (this is [lexical scoping](https://en.wikipedia.org/wiki/Scope_(computer_science)#Lexical_scoping)),
+      but it can also read parameters that are available when the function is called (this is
+      [dynamic scoping](https://en.wikipedia.org/wiki/Scope_(computer_science)#Dynamic_scoping)).
 
-            [lang=coeffects-flat-impl]
-            let f = 
-              let ?y = 10 in
-              (fun x -> x + ?y + ?z) in
-            f 5        
-        
-        Check out some more examples!
-        
-        And the really tricky one.
-        
-        
-            [lang=coeffects-flat-impl]
-            let f = 
-              let ?y = 10 in
-              (fun x -> x + ?y + ?z) in
-            let ?y = 5 in f 5        
+      Dynamic scoping is useful when you have a deep chain of function calls and you want to add a parameter 
+      to it. With implicit parameters, you do not have to explicitly pass it around in each 
+      function of the chain. For example:
+      
+          [lang=coeffects-flat-impl]
+          let dyn = 
+            (fun snd -> ?fst + snd) in
+          let ?fst = 10 in dyn ?other
+      
+      The function `demo` uses a parameter `?fst` but we assign it a value later when we call the 
+      function. The coeffect system tracks the required implicit parameters and it won't allow calling the
+      function if we do not provide a value. You can see (in a tooltip for `demo`) that the type of 
+      the function is `int -{ ?fst:int }-> int`. Coeffects also support lexical scoping and capture 
+      parameters that are already in scope:
+      
+          [lang=coeffects-flat-impl]
+          let lex = 
+            let ?fst = 10 in
+            (fun snd -> ?fst + snd) in
+          lex ?other
+  
+      Here, the implicit parameter `?fst` is in scope when `demo` is defined and so the function
+      does not require any implicit parameters. Its type is just `int -> int`. 
+      
+      This is where coeffects differ from effects and monads! If we were using the Reader monad,
+      we would get a function that requires `?fst`. In other words, monads support only 
+      dynamic scoping, but not lexical scoping.
+      <<<<
+      
+    </div>
+    <div class="col-md-6">
+      <div class="callout coeffect-playground" style="padding:30px;margin-bottom:50px;">
+        <h3 style="margin:5px 0px 15px 0px;">Implicit parameters playground</h3>
+        <p>Choose a sample from the tutorial or write your own snippet using 
+          <code>?param</code> to access an implicit parameter value!</p>
 
-        <<<<
+        <textarea class="form-control" id="impl1-input">?fst + ?snd</textarea>
+        <button class="btn btn-success" id="impl1-btn"><i class="fa fa-check"></i>Check snippet</button>
+        <script>$(function() { $("#impl1-btn").trigger("click"); });</script>
         
-      </div>
-      <div class="col-md-6">
-        <div class="callout coeffect-playground" style="padding:30px">
-          <h3 style="margin:5px 0px 15px 0px;">Implicit parameters playground</h3>
-          <p>Choose a sample from the tutorial or write your own snippet using 
-            <code>?param</code> to access an implicit parameter value!</p>
-
-          <textarea class="form-control" id="impl1-input">?x + ?y</textarea>
-          <button class="btn btn-success" id="impl1-btn"><i class="fa fa-check"></i>Check snippet</button>
-          <script>$(function() { $("#impl1-btn").trigger("click"); });</script>
-          
+        <p id="impl1-error" style="clear:both;"></p>
+        <div id="impl1-no-error">
           <p style="clear:both;">The program is well-typed. The type system reports the following 
             type and coeffect information:</p>
           
           <p id="impl1-judgement" data-tex-color-prefix="l"></p>
           <p id="impl1-judgement-temp" style="display:none"></p>
           
-          <p>Here you can enter the values</p>
+          <p id="impl1-playground-no-ui">The context of the expression requires no implicit parameters. You can just run it.</p>
+          <p id="impl1-playground-ui">The expression requires some implicit parameter values. You can set their values here:</p>
           <div id="impl1-playground">
           </div>
-          <div style="clear:both"></div>
         </div>
+        <div style="clear:both"></div>
       </div>
+      
+      <div class="ia-choice ia-ui-bar-right" data-ia-undoable="true" data-ia-key="ch8" data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="langs-details" data-ia-hide="">
+      >>>>
+      
+      What exactly is allowed?
+      
+      <<<<
+      </div>
+    </div>
+  </div>
+  
+  <div class="row ia new-section" data-ia-key="langs-details" data-ia-mode="long">
+    <div class="hidden-sm col-md-1"></div>
+    <div class="col-sm-8 col-md-7 rside">
+      >>>>
+      And the really tricky one.
+      
+      
+          [lang=coeffects-flat-impl]
+          let f = 
+            let ?y = 10 in
+            (fun x -> x + ?y + ?z) in
+          let ?y = 5 in f 5        
+
+      <<<<
     </div>
   </div>
 </div>

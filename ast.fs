@@ -165,4 +165,4 @@ module ExprShape =
     | Expr.Var(v), _ -> Expr.Var(v)
     | Expr.Tuple(_), es -> Expr.Tuple(es)
     | Expr.Builtin(s, a), _ -> Expr.Builtin(s, a)
-    | _ -> failwith "Invalid expression shape"
+    | _ -> failwith "Invalid expression shape in <code>ExprShape.recreate</code>"

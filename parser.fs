@@ -52,7 +52,7 @@ let precedence = function
   | "+" | "-" -> 1, Left
   | "*" | "/" -> 2, Left
   | "^" -> 3, Right
-  | _ -> failwith "Invalid"
+  | _ -> Errors.unexpected "Invalid operator name in <code>Parser.precedence</code>."
 
 /// Represnts a sequence of expressions separated by binary operators
 /// (e.g. 'f x + 1 * 2 / g y' has 4 expressions separated by 3 operators)

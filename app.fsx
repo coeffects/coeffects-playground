@@ -18,6 +18,7 @@ open Suave.Http.Applicatives
 
 #load "parsec.fs"
 #load "ast.fs"
+#load "errors.fs"
 #load "lexer.fs"
 #load "parser.fs"
 #load "solver.fs"
@@ -72,6 +73,7 @@ module Client =
   let html (s:string) (j:JQuery) = j.html(s)
   let appendTo (p:JQuery) (j:JQuery) = j.appendTo(p)
   let click (f:unit -> unit) (j:JQuery) = j.click(fun _ -> f(); obj())
+  let cls (s:string) (j:JQuery) = j.addClass(s)
 
   let setupPlayground prefix kind tyinfo transle = 
     let playground = Globals.document.getElementById(prefix + "-playground") :?> HTMLPreElement
@@ -109,18 +111,36 @@ module Client =
         let inputs = 
           [ for c in coeffs -> 
               let input = el "input" [ ("type","text"); ("placeholder", "0"); ("class","form-control") ] []
-              let label = el "td" [] [] |> html ("?" + c + " = ")
+              let label = el "td" [] [] |> html ("<code>?" + c + "</code> =") |> cls "label"
               el "tr" [] [ label; el "td" [] [input] ] |> appendTo fg |> ignore
               c, input ]
 
-        el "button" [ ("class", "btn btn-success") ] [] 
-        |> html "<i class='fa fa-play'></i>Run snippet"
-        |> click (fun () ->
+        let result =
+          let input = el "input" [ ("type","text"); ("disabled", "disabled"); ("placeholder", "0"); ("class","form-control") ] []
+          let label = el "td" [] [] |> html ("<code>result</code> =") |> cls "label"
+          el "tr" [] [ label; el "td" [] [input] ] |> cls "result" |> appendTo fg |> ignore
+          input
+              
+        let evaluate () = 
           let input = Value.ImplicitsComonad(Value.Unit, Map.ofList [ for c, i in inputs -> c, Value.Integer(1 * unbox(i._val())) ])
           let res = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle
           match res with 
-          | Value.Integer n -> Globals.window.alert(string n)
-          | _ -> Globals.window.alert("Something weird") )
+          | Value.Integer n -> result._val(string n) |> ignore
+          | Value.Function _ -> result._val("<function>") |> ignore
+          | Value.Tuple _ -> result._val("<tuple>") |> ignore
+          | Value.Unit _ -> result._val("()") |> ignore
+          | Value.ListComonad _ | Value.ImplicitsComonad _ -> result._val("<comonad>") |> ignore
+
+        let noUi, ui = jq("#" + prefix + "-playground-no-ui"), jq("#" + prefix + "-playground-ui")
+        if List.isEmpty inputs then ignore(noUi.show()); ignore(ui.hide()); 
+        else ignore(ui.show()); ignore(noUi.hide())        
+
+        for _, i in inputs do i.on("change", fun _ _ -> evaluate(); null).on("keyup", fun _ _ -> evaluate(); null) |> ignore
+        evaluate()
+
+        el "button" [ ("class", "btn btn-success") ] [] 
+        |> html "<i class='fa fa-play'></i>Run snippet"
+        |> click evaluate
         |> appendTo pl |> ignore
     | _ -> ()
 
@@ -209,7 +229,7 @@ module Client =
     let judgementTemp = Globals.document.getElementById(prefix + "-judgement-temp") :?> HTMLPreElement
 
     let arr : string[] = [| |]
-    MathJax.judgement kind typed arr |> ignore
+    MathJax.shortJudgement kind typed arr |> ignore
     let tex = arr.join("").Replace("{\\color{", "{\\color{" + clr)
     judgementTemp.innerHTML <- "\\[" + tex + "\\]"
     typeSetElement (prefix + "-judgement-temp")
@@ -225,6 +245,20 @@ module Client =
   let setupHtmlOutput prefix view kind e =
     let transl = Globals.document.getElementById(prefix + "-" + view) :?> HTMLPreElement
     transl.innerHTML <- Html.print (Html.printExpr kind prefix 0 [] e)
+    Globals.eval("setupTooltips()") |> ignore
+
+  let reportError prefix msg = 
+    let error = jq("#" + prefix + "-error")
+    let noerror = jq("#" + prefix + "-no-error")
+    match msg with
+    | Some(err:string) ->
+        error.html(err).show() |> ignore
+        noerror.hide() |> ignore
+        if int error.length = 0 then
+          Globals.window.alert("Parsing or type checking failed.\n\n" + (jq(error).text()))
+    | None -> 
+        error.hide() |> ignore
+        noerror.show() |> ignore
 
 // ------------------------------------------------------------------------------------------------
 // Create a UI where the user can browse the typing derivation
@@ -243,44 +277,50 @@ module Client =
 
   let typeCheckSoruce (source:string) kind mode =  
     let (Parsec.Parser lex) = Lexer.lexer
-    let tokens = lex (List.ofArray (source.ToCharArray())) |> Option.get |> snd
-    let tokens = tokens |> filter (function Token.White _ -> false | _ -> true)
-    let (Parsec.Parser pars) = Parser.expr ()
-    let expr = pars tokens |> Option.get |> snd
-    TypeChecker.typeCheck (fun _ _ -> failwith "Unexpected built-in!") kind mode expr
-    // TODO: Rename all type/coeffect variables before translation to remove clashes
+    match lex (List.ofArray (source.ToCharArray())) with
+    | Some([], tokens) ->
+        let tokensNotWhite = tokens |> filter (function Token.White _ -> false | _ -> true)
+        let (Parsec.Parser pars) = Parser.expr ()
+        match pars tokensNotWhite with
+        | Some([], expr) ->
+            TypeChecker.typeCheck (fun _ _ -> Errors.parseError "Unexpected built-in! Built-ins can only appear in translated code.") kind mode expr
+            // TODO: Rename all type/coeffect variables before translation to remove clashes
+        | _ -> Errors.parseError "Check that everything is syntactically valid. For example, you might be missing the <code>in</code> keyword."
+    | _ -> Errors.parseError "Unexpected token. You might be trying to use some unsupported operator or keyword."
 
   let setup kind mode prefix = 
     let btn = Globals.document.getElementById(prefix + "-btn") :?> HTMLButtonElement
     let input = Globals.document.getElementById(prefix + "-input") :?> HTMLTextAreaElement
 
-
     btn.addEventListener_click(fun e ->
-      let typed = typeCheckSoruce input.value kind mode
-  
-      if hasFeature prefix "output" then
-        setupHtmlOutput prefix "output" kind typed
+      try
+        let typed = typeCheckSoruce input.value kind mode 
+        if hasFeature prefix "output" then
+          setupHtmlOutput prefix "output" kind typed
 
-      tryGetFeature prefix "typetree" "tex-color-prefix" 
-      |> Option.iter (fun clr -> setupTypeDerivation clr prefix kind typed)
+        tryGetFeature prefix "typetree" "tex-color-prefix" 
+        |> Option.iter (fun clr -> setupTypeDerivation clr prefix kind typed)
 
-      tryGetFeature prefix "judgement" "tex-color-prefix" 
-      |> Option.iter (fun clr -> setupJudgement clr prefix kind typed)
+        tryGetFeature prefix "judgement" "tex-color-prefix" 
+        |> Option.iter (fun clr -> setupJudgement clr prefix kind typed)
 
-      if mode = CoeffectMode.Flat then      
-        let transle  = 
-          Translation.translate (Typed((), Expr.Builtin("input", []))) [] typed 
-          |> Translation.contract
-          |> TypeChecker.typeCheck (Translation.builtins (TypeChecker.coeff typed)) (CoeffectKind.Embedded kind) CoeffectMode.None
+        if mode = CoeffectMode.Flat then      
+          let transle  = 
+            Translation.translate (Typed((), Expr.Builtin("input", []))) [] typed 
+            |> Translation.contract
+            |> TypeChecker.typeCheck (Translation.builtins (TypeChecker.coeff typed)) (CoeffectKind.Embedded kind) CoeffectMode.None
 
-        if hasFeature prefix "transl" then
-          setupHtmlOutput prefix "transl" kind transle
+          if hasFeature prefix "transl" then
+            setupHtmlOutput prefix "transl" kind transle
 
-        if hasFeature prefix "playground" then
-          let (Typed(tyinfo, _)) = typed
-          setupPlayground prefix kind tyinfo transle
-    
-      null
+          if hasFeature prefix "playground" then
+            let (Typed(tyinfo, _)) = typed
+            setupPlayground prefix kind tyinfo transle
+        reportError prefix None
+        null
+      with e ->
+        reportError prefix (Some(e.ToString()))
+        null
     )
 
   let main () =
@@ -288,7 +328,7 @@ module Client =
     jq("code[lang*='coeffects']").each(fun _ _ ->
       incr counter
       let lang = jthis().attr("lang")
-      let source = jthis().text()
+      let source = jthis().text().Trim()
       let kind = 
         if lang.Contains("impl") then CoeffectKind.ImplicitParams
         elif lang.Contains("df") then CoeffectKind.PastValues
@@ -310,7 +350,7 @@ module Client =
         jq("#" + ed + "-btn").trigger("click") |> ignore
         null) |> ignore
 
-      let typed = typeCheckSoruce source kind mode
+      let typed = typeCheckSoruce source kind mode 
       let prefix = "fmtpre" + (string counter.Value)
       jthis().html(Html.print (Html.printExpr kind prefix 0 [] typed)) |> ignore
       null
@@ -331,6 +371,7 @@ module Client =
 
       setup kind mode id
       obj() ) |> ignore
+    Globals.eval("setupTooltips()") |> ignore
 
 let script = 
   translate <@ Client.main() @>

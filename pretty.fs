@@ -33,8 +33,8 @@ let rec flattenCoeffects kind c =
     | Coeffect.ImplicitParam(s, t) -> [s, t]
     | Coeffect.Merge(c1, c2) | Coeffect.Split(c1, c2) | Coeffect.Seq(c1, c2) -> 
         flattenImplicits c1 @ flattenImplicits c2
-    | Coeffect.Past _ -> failwith "Unexpected past value in coeffect"
-    | Coeffect.Variable _ -> failwith "Unresolved coeffect variable"
+    | Coeffect.Past _ -> Errors.unexpected "Unexpected <code>Coeffect.Past</code> when flattening dataflow coeffects in <code>flattenCoeffects</code>."
+    | Coeffect.Variable _ -> Errors.unexpected "Unresolved <code>Coeffect.Variable</code> when flattening dataflow coeffects in <code>flattenCoeffects</code>."
   let rec flattenPast c = 
     match c with
     | Coeffect.None -> 0
@@ -43,9 +43,9 @@ let rec flattenCoeffects kind c =
     | Let max (op, Coeffect.Split(c1, c2))
     | Let (+) (op, Coeffect.Seq(c1, c2)) -> op (flattenPast c1) (flattenPast c2)
     | Coeffect.Past(n) -> n
-    | Coeffect.ImplicitParam _ -> failwith "Unexpected implicit param value in coeffect"
-    | Coeffect.Variable _ -> failwith "Unresolved coeffect variable"
-    | _ -> failwith "Unexpected coeffect value"
+    | Coeffect.ImplicitParam _ -> Errors.unexpected "Unexpected <code>Coeffect.ImplicitParam</code> when flattening implicit parameters coeffects in <code>flattenCoeffects</code>."
+    | Coeffect.Variable _ -> Errors.unexpected "Unresolved <code>Coeffect.Variable</code> when flattening implicit parameter coeffects in <code>flattenCoeffects</code>."
+    | _ -> Errors.unexpected "Unresolved coeffectvalue when flattening dataflow coeffects in <code>flattenCoeffects</code>."
   match kind with
   | CoeffectKind.ImplicitParams -> PrimitiveCoeffect.ResourceSet (flattenImplicits c)
   | CoeffectKind.PastValues -> PrimitiveCoeffect.PastValues (flattenPast c)
@@ -180,7 +180,7 @@ module Html =
             sb.push(" } ")
         printTyp kind t sb
 
-    | Type.Variable s -> sb.push("&quot;"); sb.push(s)
+    | Type.Variable s -> sb.push("'"); sb.push(s)
     | Type.Tuple(ts) ->
         sb.push("(")
         printTyp kind (List.head ts) sb |> ignore
@@ -195,7 +195,7 @@ module Html =
         let c = 
           if cf = Coeffect.None then cs 
           elif cs = Coeffect.None then cf
-          else failwith "Pretty printer cannot do mixed systems"
+          else Errors.unexpected "Pretty printer cannot format coeffect langauge expression with mixed flat and structural coeffects."
         match flattenCoeffects kind c with
         | PrimitiveCoeffect.PastValues 0 
         | PrimitiveCoeffect.ResourceSet [] -> 
@@ -203,7 +203,7 @@ module Html =
         | PrimitiveCoeffect.PastValues n -> 
             sb.push(" -{ " + string n + " }-&gt; ")
         | PrimitiveCoeffect.ResourceSet coeffs -> 
-            sb.push(" -{")
+            sb.push(" -{ ")
             printCoeff kind coeffs sb
             sb.push(" }-&gt; ")
         printTyp kind t2 sb
@@ -231,7 +231,7 @@ module Html =
       | Expr.Integer(n) -> span ["class","n"] (string n)
       | Expr.Prev(e) -> span ["class","k"] "prev" ++ text " " ++ printExpr kind prefix thisPrec (0::path) e
       | Expr.Fun(pat, body) -> 
-          let tin = match typ with Type.Func(_, tin, _) -> tin | _ -> failwith "Expected function type"
+          let tin = match typ with Type.Func(_, tin, _) -> tin | _ -> Errors.unexpected "Expected a type <code>Type.Func</code> when pretty printing a function value."
           span ["class","k"] "fun" ++ text " " ++ 
             printPat kind pat ++ text " " ++
             span ["class","k"] "-&gt;" ++ text " " ++
@@ -306,8 +306,9 @@ module MathJax =
       g arr
 
   /// Format an expression
-  let rec expr prec (Typed.Typed((_, c, t),e)) (ar:string[]) = 
+  let rec expr limLength prec (Typed.Typed((_, c, t),e)) (ar:string[]) = 
     // Wrap in parentheses if this expression has lower precedence
+    let expr = expr limLength
     let thisPrec, (lPrec, rPrec) = precedence e
     let close = 
       if thisPrec >= prec then id
@@ -322,19 +323,19 @@ module MathJax =
       | Expr.Var(v) -> ar |> inl v
       | Expr.QVar(v) -> ar |> inl ("?" + v)
       | Expr.Integer(n) -> ar |> num n
-      | Expr.Prev(e) -> ar |> kvd "prev" |> limit 12 (expr thisPrec e) (inl "\\ldots")
+      | Expr.Prev(e) -> ar |> kvd "prev" |> limit limLength (expr thisPrec e) (inl "\\ldots")
       | Expr.App(e1, e2) ->
          ar |> expr lPrec e1 |> inl "~" |> expr rPrec e2
       | Expr.Let(pat, arg, body) ->
          ar |> kvd "let" |> inl "~" |> pattern pat |> operator "=" 
-            |> limit 8 (expr thisPrec arg) (inl "\\ldots") |> inl "~" |> kvd "in" |> inl "~" 
-            |> limit 8 (expr thisPrec body) (inl "\\ldots")
+            |> limit limLength (expr thisPrec arg) (inl "\\ldots") |> inl "~" |> kvd "in" |> inl "~" 
+            |> limit limLength (expr thisPrec body) (inl "\\ldots")
       | Expr.Binary(op, e1, e2) -> 
-         ar |> limit 8 (expr lPrec e1) (inl "\\ldots") |> operator op
-            |> limit 8 (expr rPrec e2) (inl "\\ldots")
+         ar |> limit limLength (expr lPrec e1) (inl "\\ldots") |> operator op
+            |> limit limLength (expr rPrec e2) (inl "\\ldots")
       | Expr.Fun(pat, body) ->
          ar |> kvd "fun" |> inl "~" |> pattern pat |> inl "\\rightarrow "
-            |> limit 8 (expr thisPrec body) (inl "\\ldots") )
+            |> limit limLength (expr thisPrec body) (inl "\\ldots") )
     |> close
 
   /// Format the free-variable context
@@ -377,7 +378,7 @@ module MathJax =
         let c = 
           if cf = Coeffect.None then cs 
           elif cs = Coeffect.None then cf
-          else failwith "Pretty printer cannot do mixed systems"
+          else Errors.unexpected "Pretty printer cannot format coeffect langauge expression with mixed flat and structural coeffects."
         ar |> typ kind colored t1 |> inl "\\xrightarrow{" |> coeff kind true c 
            |> inl "}" |> typ kind colored t2 |> ignore
     | Type.Primitive(s) -> ar |> inl ("\\text{" + s + "}") |> ignore
@@ -401,7 +402,13 @@ module MathJax =
   /// Format a typing judgement of the form $\Gamma @ c \vdash e : \tau$
   let judgement kind (Typed.Typed((v, c, t), e) as te) (ar:string[]) =
     ar |> vars kind v |> inl "\\,{\\small @}\\," |> coeffs kind v c 
-       |> inl "\\vdash " |> expr 0 te |> inl ":" |> typ kind true t
+       |> inl "\\vdash " |> expr 8 0 te |> inl ":" |> typ kind true t
+
+  /// Format a typing judgement of the form $\Gamma @ c \vdash e : \tau$
+  /// This limits the size of the expression body a bit more than `judgement`.
+  let shortJudgement kind (Typed.Typed((v, c, t), e) as te) (ar:string[]) =
+    ar |> vars kind v |> inl "\\,{\\small @}\\," |> coeffs kind v c 
+       |> inl "\\vdash " |> expr 3 0 te |> inl ":" |> typ kind true t
 
   /// Wraps the specified formatting function in LaTeX array
   let array f ar = 

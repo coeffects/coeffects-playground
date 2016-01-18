@@ -61,8 +61,9 @@
   </Target>
   -->
   <ItemGroup>
-    <Compile Include="parsec.fs" />
     <Compile Include="ast.fs" />
+    <Compile Include="parsec.fs" />
+    <Compile Include="errors.fs" />
     <Compile Include="lexer.fs" />
     <Compile Include="parser.fs" />
     <Compile Include="solver.fs" />
