@@ -221,9 +221,9 @@ let rec check ctx (Typed((), e)) : Typed<CoeffVars * Coeffect * Type> * ResultCo
         |> Structural.addVar name Coeffect.Use typ
       typed cstruct cflat typ (Expr.Var name) (Result.empty [name])
 
-  | Expr.Integer(n) ->
+  | Expr.Number(n) ->
       typed (Structural.ofVars Coeffect.Ignore ctx.Variables) 
-        Coeffect.Ignore (Type.Primitive "int") (Expr.Integer n) (Result.empty [])
+        Coeffect.Ignore (Type.Primitive "num") (Expr.Number n) (Result.empty [])
 
   | Expr.Fun(pat, body) ->
       // Type check body with context containing `v : 'newTypeVar` for each new variable
@@ -321,11 +321,11 @@ let rec check ctx (Typed((), e)) : Typed<CoeffVars * Coeffect * Type> * ResultCo
   | Expr.Binary(op, l, r) ->
       let el, cl = check ctx l
       let er, cr = check ctx r
-      let cc = [ typ el, Type.Primitive "int"; typ er, Type.Primitive "int" ]
+      let cc = [ typ el, Type.Primitive "num"; typ er, Type.Primitive "num" ]
       let res = Result.merge cl cr |> Result.constrainTypes cc
       let cflat = Coeffect.Split(coeff el, coeff er)
       let cstruct = Structural.merge (cvars el) (cvars er)
-      typed cstruct cflat (Type.Primitive "int") (Expr.Binary(op, el, er)) res
+      typed cstruct cflat (Type.Primitive "num") (Expr.Binary(op, el, er)) res
 
            
 // ------------------------------------------------------------------------------------------------

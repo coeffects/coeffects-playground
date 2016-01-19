@@ -4,6 +4,7 @@
 #r "packages/FunScript.TypeScript.Binding.jquery/lib/net40/FunScript.TypeScript.Binding.jquery.dll"
 #load "parsec.fs"
 #load "ast.fs"
+#load "errors.fs"
 #load "lexer.fs"
 #load "parser.fs"
 #load "solver.fs"
@@ -21,14 +22,22 @@ open Coeffects.Solver
 open Coeffects.Translation
 
 
-let source = "fun x -> (fun y -> prev y) (prev ((prev x) + x))"
+let source = "fun z -> let struct x y = x + prev y in struct z"
 let (Parsec.Parser lex) = Lexer.lexer
 let tokens = lex (List.ofArray (source.ToCharArray())) |> Option.get |> snd
 let tokens' = tokens |> List.filter (function Token.White _ -> false | _ -> true)
 let (Parsec.Parser pars) = Parser.expr ()
 let expr = pars tokens' |> Option.get |> snd
-
+let builtins, kind, mode = (fun _ _ -> failwith "!"), CoeffectKind.PastValues, CoeffectMode.Structural
+let typed = TypeChecker.typeCheck builtins kind mode expr
     
+
+let builtins, kind, mode = Translation.builtins (TypeChecker.coeff typed), CoeffectKind.Embedded kind, CoeffectMode.None
+let expr = 
+  Translation.translate (Typed((), Expr.Builtin("input", []))) [] typed 
+  |> Translation.contract
+expr |> TypeChecker.typeCheck (Translation.builtins (TypeChecker.coeff typed)) kind CoeffectMode.None
+
 
 let typ (Typed((_, t), _)) = t
 
@@ -70,11 +79,11 @@ let rec check ctx (Typed((), e)) : Typed<CoeffVars * Type> * ResultContext =
   | Expr.Binary(op, l, r) ->
       let el, cl = check ctx l
       let er, cr = check ctx r
-      let cc = [ typ el, Type.Primitive "int"; typ er, Type.Primitive "int" ]
+      let cc = [ typ el, Type.Primitive "num"; typ er, Type.Primitive "num" ]
       let res = Result.merge cl cr |> Result.constrainTypes cc
       //let c = Coeffect.Split(coeff el, coeff er)
       let cvs = CoeffVars.merge (cvars el) (cvars er)
-      Typed((cvs, Type.Primitive "int"), Expr.Binary(op, el, er)), res
+      Typed((cvs, Type.Primitive "num"), Expr.Binary(op, el, er)), res
 
 
 let annotated, ctx = check (Context.empty  (fun _ _ -> failwith "?") CoeffectKind.PastValues) expr

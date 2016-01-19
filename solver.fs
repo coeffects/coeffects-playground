@@ -73,24 +73,31 @@ let fixedPoint f initial =
     newState <- s
   newState
 
+/// Remove element satisfying the given condition from a list
+let rec remove f list = 
+  match list with 
+  | [] -> None, []
+  | x::xs when f x -> Some x, xs
+  | x::xs ->
+      let a, b = remove f xs
+      a, x::b
+
 /// Build equivalence classes between variables. Returns a function that takes a variable, value & 
 /// map and adds an assignment for all variables that are equivalent to the given variable
 let buildEquivalenceClasses vars =
-  let rec collectEquals groups (constrs:list<string * string>) = 
-    match constrs with
-    | (v1, v2)::rest ->
-        let found, groups = groups |> List.fold (fun (found, groups) group -> 
-          if found then 
-            found, group::groups
-          elif Set.contains v1 group || Set.contains v2 group then
-            true, (Set.add v1 (Set.add v2 group))::groups
-          else
-            false, group::groups) (false, [])
-        let groups = if found then groups else (set [v1; v2])::groups
-        collectEquals groups rest
-    | [] -> groups
-
-  let equivVars = collectEquals [] vars
+  let rec loop (acc:list<Set<string>>) sets =
+    match sets with 
+    | first::sets ->
+        // If there is set that overlaps with the current one, union them
+        let opt, sets = remove (fun second -> Set.count (Set.intersect first second) > 0) sets 
+        let acc = 
+          match opt with 
+          | None -> first::acc
+          | Some other -> (Set.union first other)::acc
+        loop acc sets 
+    | [] -> acc
+                
+  let equivVars = vars |> List.map (fun (v1, v2) -> set[v1; v2]) |> fixedPoint (loop [] >> List.sort)
 
   // Adds assignment for all variables that are equivalent to 'v'
   fun v (value:'T) map ->
@@ -190,9 +197,11 @@ module Dataflow =
     // Turn 'merge(r, s) = X' constraints from 'fun' into equivalence 
     //   'r = s' and replace them with simple 'r = X'
     // Also, filter out all constraints involving `None` coeffects
-    let equivVars = constrs |> List.choose (function 
+    let equivVars = constrs |> List.collect (function 
+      | Coeffect.Merge(Coeffect.Variable v1, Coeffect.Variable v2), Coeffect.Variable v3 -> [v1, v2; v1, v3]
       | Coeffect.Merge(Coeffect.Variable v1, Coeffect.Variable v2), _ 
-      | Coeffect.Variable v1, Coeffect.Variable v2 -> Some(v1, v2) | _ -> None)
+      | Coeffect.Variable v1, Coeffect.Variable v2 -> [v1, v2] 
+      | _ -> [])
     let constrs = constrs |> List.choose (function
       | Coeffect.None, _ | _, Coeffect.None
       | Coeffect.Variable _, Coeffect.Variable _ -> None 
@@ -205,6 +214,7 @@ module Dataflow =
     Map.empty |> fixedPoint (fun assigns ->    
       let rec loop (assigns:Map<string,int>) constrs =
         match constrs with
+        | (r, Coeffect.Variable v)::rest
         | (Coeffect.Variable v, r)::rest -> 
             let n = evalCoeffect assigns r
             loop (addAssignment v n assigns) rest

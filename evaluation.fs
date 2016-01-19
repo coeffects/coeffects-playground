@@ -37,7 +37,7 @@ let unzip l =
 type Value =
   // Standard functional language values
   | Unit
-  | Integer of int
+  | Number of float
   | Function of (Value -> Value)
   | Tuple of Value list
   // Comonadic values
@@ -59,8 +59,8 @@ let rec bind value (TypedPat(_, pattern)) vars =
       List.zip pats vals |> List.fold (fun ctx (p, v) -> bind v p ctx) vars
   | _ -> Errors.evaluationFailed "The provided value does not match the specified pattern."
 
-let operators = 
-  Map.ofList [ "+", (+); "-", (-); "*", (*); "/", (/); "^", pown ] 
+let operators : Map<string, float -> float -> float> = 
+  Map.ofList [ "+", (+); "-", (-); "*", (*); "/", (/); "^", ( ** ) ] 
 
 let restrict (m:Map<string, Value>) s = 
   Map.ofList [ for v in Set.toList s -> v, Map.find v m ]
@@ -149,7 +149,7 @@ let rec evalPrimitive ctx (Typed(_, expr)) =
   | Expr.Binary(op, l, r) ->
       let op = match operators.TryFind op with Some(o) -> o | _ -> Errors.evaluationFailed "Unexpected operator in binary expression."
       match eval ctx l, eval ctx r with
-      | Value.Integer l, Value.Integer r -> Value.Integer(op l r)
+      | Value.Number l, Value.Number r -> Value.Number(op l r)
       | _ -> Errors.evaluationFailed "Cannot evaluate binary operation. Expected two numerical values."
 
   | Expr.Tuple(args) ->
@@ -179,7 +179,7 @@ let rec evalPrimitive ctx (Typed(_, expr)) =
       | _ -> Errors.evaluationFailed "Variable access failed. Variable is not in scope."
 
   | Expr.Builtin("input", _) -> Map.find "input" ctx.Variables
-  | Expr.Integer n -> Value.Integer n
+  | Expr.Number n -> Value.Number n
   | _ -> Errors.evaluationFailed "Evaluation failed. Unexpected expression."
 
 

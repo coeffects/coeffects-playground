@@ -5,6 +5,7 @@
 [<ReflectedDefinition>]
 module Coeffects.Parser
 
+open Coeffects
 open Coeffects.Parsec
 open Coeffects.Ast
 open Coeffects.Lexer
@@ -17,7 +18,7 @@ let var =
 let qvar = 
   choose (function Token.QIdent id -> Some(Typed.Typed((), Expr.QVar id)) | _ -> None)
 let integer = 
-  choose (function Token.Integer n -> Some(Typed.Typed((), Expr.Integer n)) | _ -> None)
+  choose (function Token.Number n -> Some(Typed.Typed((), Expr.Number n)) | _ -> None)
 let op = 
   choose (function Token.Operator s -> Some s | _ -> None)
 
@@ -103,22 +104,24 @@ and bracketed () = delay (fun () ->
 /// Parse let binding of the form 'let <pat> = <expr> in <expr>'
 and binding () = delay (fun () ->
   ( token Token.Let <*>
-    pattern () <*>
+    zeroOrMore(pattern ()) <*>
     token Token.Equals <*>
     expr () <*>
     token Token.In <*>
     expr () )
-  |> map (fun (((((_, pat), _), assign), _), body) ->
+  |> map (fun (((((_, pats), _), assign), _), body) ->
+    let pat, pats = List.head pats, List.rev (List.tail pats)
+    let assign = pats |> List.fold (fun assign pat -> Typed.Typed((), Expr.Fun(pat, assign))) assign
     Typed.Typed((), Expr.Let(pat, assign, body))) )
 
 /// Parse a function of the form 'fun <pat> .. <pat> -> <expr>'
 and func () = delay (fun () ->
   ( token Token.Fun <*>
-    pattern () <*>
+    oneOrMore (pattern ()) <*>
     token Token.Arrow <*>
     expr () )
-  |> map (fun (((_, pat), _), body) -> 
-    Typed.Typed((), Expr.Fun(pat, body)) ))
+  |> map (fun (((_, pats), _), body) -> 
+    pats |> List.rev |> List.fold (fun body pat -> Typed.Typed((), Expr.Fun(pat, body))) body )) 
 
 and prev () = delay (fun () ->
   ( token Token.Prev <*>

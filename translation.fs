@@ -26,8 +26,8 @@ let rec removeImplicit (v, vt) coeff =
 
 let rec translate ctx vars (Typed((v,c,t), e)) = 
   match e with
-  | Expr.Integer(n) ->
-      !Expr.Integer(n)
+  | Expr.Number(n) ->
+      !Expr.Number(n)
   | Expr.Var(v) ->
       // (v1, (v2, (v3, ()))
       let rec getVarProj e vars = 

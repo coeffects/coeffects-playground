@@ -181,7 +181,7 @@ nav.affix .ia-ui-menu li {
 }
 
 .body h2 {
-  font: 20pt Kreon,'Times New Roman',times,serif;
+  font: 21pt Kreon,'Times New Roman',times,serif;
 }
 @media (min-width: 992px) {
   .body .lside h2 {  
@@ -201,14 +201,17 @@ nav.affix .ia-ui-menu li {
 }
 
 .body h3 {
-  font: 17pt Kreon,'Times New Roman',times,serif;
+  font: 16pt Kreon,'Times New Roman',times,serif;
 }
 
-.body p, .body li {
+.body p {
   margin:0px 0px 10px 0px;
   font: 13pt 'PT Sans',verdana,sans-serif;
 }
-
+.body li {
+  margin:0px 0px 4px 0px;
+  font: 13pt 'PT Sans',verdana,sans-serif;
+}
 .body .callout {
   background:black;
   color:white;
@@ -265,10 +268,10 @@ nav.affix .ia-ui-menu li {
 }
 
 /* Elements for running coeffect code snippets */
-.pre-play {
+.pre-play, .pre-edit {
   position:relative;
 }
-.pre-play a {
+.pre-play a, .pre-edit a {
   cursor:pointer;
   position:absolute;
   right:25px;
@@ -277,10 +280,14 @@ nav.affix .ia-ui-menu li {
   color:#909090;
   text-decoration:none;
 }
-.pre-play a i {
+.pre-edit a {
+  top:18px;
+  right:38px
+}
+.pre-play a i, .pre-edit a i {
   margin-right:2px;
 }
-.pre-play a:hover {
+.pre-play a:hover, .pre-edit a:hover {
   color:#505050;
   text-decoration:none;
 }
@@ -459,7 +466,7 @@ div.tip {
 table.pre {
   width:100%;
 }
-pre {
+textarea.prelike, pre {
   line-height:13pt;
   border:1px solid #d8d8d8;
   border-collapse:separate;
@@ -469,6 +476,14 @@ pre {
   padding:10px;
   border-radius:5px;
   color:#000000;  
+}
+textarea.prelike {
+  width:100%;
+  display:block;
+  background-color:#fafafa;  
+}
+div.prelike {
+  margin-right:40px;
 }
 pre.fssnip code {
   font:12pt 'Inconsolata',consolas,monospace;

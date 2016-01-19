@@ -71,7 +71,7 @@ let rec flattenCoeffects kind c =
 let precedence expr = 
   let prec, (lfix, rfix) =
     match expr with
-    | Expr.Builtin _ | Expr.Var _ | Expr.QVar _ | Expr.Integer _ -> 100, (0, 0)
+    | Expr.Builtin _ | Expr.Var _ | Expr.QVar _ | Expr.Number _ -> 100, (0, 0)
     | Expr.Prev _ -> 60, (0, 0)
     | Expr.App _ -> 50, (0, 1)
     | Expr.Binary("^", _, _) -> 40, (1, 0)
@@ -197,7 +197,6 @@ module Html =
           elif cs = Coeffect.None then cf
           else Errors.unexpected "Pretty printer cannot format coeffect langauge expression with mixed flat and structural coeffects."
         match flattenCoeffects kind c with
-        | PrimitiveCoeffect.PastValues 0 
         | PrimitiveCoeffect.ResourceSet [] -> 
             sb.push(" -&gt; ")
         | PrimitiveCoeffect.PastValues n -> 
@@ -214,6 +213,9 @@ module Html =
     let id = "-p-" + String.concat "-" (List.rev (List.map string path))
     text ("<span class='p-span' id='" + prefix + id + "'>") ++ p ++ text "</span>"
 
+  let sep items sep = 
+    List.fold (fun st it -> st ++ sep ++ it) (List.head items) (List.tail items)
+
   /// Print coeffect language expression
   let rec printExpr kind prefix prec path (Typed.Typed((_, coeff, typ), expr)) =
 
@@ -228,17 +230,16 @@ module Html =
       | Expr.Var(s) -> span ["title", inl (printTyp kind typ); "class","i"] s 
       | Expr.Builtin(s, _) -> span ["class","op"] s 
       | Expr.QVar(s) -> span ["title", inl (printTyp kind typ); "class","i"] ("?" + s)
-      | Expr.Integer(n) -> span ["class","n"] (string n)
+      | Expr.Number(n) -> span ["class","n"] (string n)
       | Expr.Prev(e) -> span ["class","k"] "prev" ++ text " " ++ printExpr kind prefix thisPrec (0::path) e
-      | Expr.Fun(pat, body) -> 
+      | Expr.Funs(pats, body) -> 
           let tin = match typ with Type.Func(_, tin, _) -> tin | _ -> Errors.unexpected "Expected a type <code>Type.Func</code> when pretty printing a function value."
           span ["class","k"] "fun" ++ text " " ++ 
-            printPat kind pat ++ text " " ++
+            sep (List.map (printPat kind) pats) (text " ") ++ text " " ++
             span ["class","k"] "-&gt;" ++ text " " ++
             wrap (printExpr kind prefix thisPrec (0::path) body)
-
-      | Expr.Let(pat, (Typed.Typed((_, coeff, vtyp), _) as arg), body) -> 
-          span ["class","k"] "let" ++ text " " ++ printPat kind pat ++ text " " ++
+      | Expr.Lets(pats, (Typed.Typed((_, coeff, vtyp), _) as arg), body) -> 
+          span ["class","k"] "let" ++ text " " ++ sep (List.map (printPat kind) pats) (text " ") ++ text " " ++
             span ["class","op"] "=" ++ text " " ++ wrap (printExpr kind prefix thisPrec (0::path) arg) ++ text " " ++
             span ["class", "k"] "in" ++ newline ++ printExpr kind prefix thisPrec (1::path) body
 
@@ -252,7 +253,9 @@ module Html =
 
       | Expr.Tuple(es) ->
           es |> List.mapi (fun i e -> printExpr kind prefix lPrec (i::path) e)
-             |> List.reduce (fun p1 p2 -> p1 ++ text ", " ++ p2) )
+             |> List.reduce (fun p1 p2 -> p1 ++ text ", " ++ p2) 
+      | Expr.Fun _ -> Errors.unexpected "Failed to format <code>Expr.Fun</code>. This case should be covered by <code>Funs</code>."
+      | Expr.Let _ -> Errors.unexpected "Failed to format <code>Expr.Let</code>. This case should be covered by <code>Lets</code>." )
 
     |> wrapParens |> withId prefix path
     
@@ -322,7 +325,7 @@ module MathJax =
          ar |> sep (inl ", ") (List.map (expr lPrec) es)
       | Expr.Var(v) -> ar |> inl v
       | Expr.QVar(v) -> ar |> inl ("?" + v)
-      | Expr.Integer(n) -> ar |> num n
+      | Expr.Number(n) -> ar |> num n
       | Expr.Prev(e) -> ar |> kvd "prev" |> limit limLength (expr thisPrec e) (inl "\\ldots")
       | Expr.App(e1, e2) ->
          ar |> expr lPrec e1 |> inl "~" |> expr rPrec e2
@@ -434,7 +437,7 @@ module MathJax =
       if root then array (judgement kind te)
       else dfrac [ array (judgement kind te) ] (array (inl "(\\ldots)"))
     match e with
-    | Expr.Builtin _ | Expr.Var _ | Expr.QVar _ | Expr.Integer _ -> 
+    | Expr.Builtin _ | Expr.Var _ | Expr.QVar _ | Expr.Number _ -> 
         ar |> dfrac [] conclusion
     | Expr.Prev(e) | Expr.Fun(_, e) ->
         ar |> dfrac [ typedTree kind e ] conclusion

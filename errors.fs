@@ -7,7 +7,7 @@ module Coeffects.Errors
 open Coeffects.Ast
 
 let rec formatCoeffect = function
-  | Coeffect.Variable s -> s
+  | Coeffect.Variable s -> "'" + s
   | Coeffect.Use -> "use"
   | Coeffect.Ignore -> "ignore"
   | Coeffect.Merge(l, r) -> "merge(" + formatCoeffect l + "," + formatCoeffect r + ")"

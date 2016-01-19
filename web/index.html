@@ -40,10 +40,10 @@
          <li><a href="#">Demos</a></li>
        </ul>
        <ul class="nav navbar-nav navbar-right ia-ui-menu">
-         <li class="ia-choice" data-ia-key="ch1" data-ia-ui-kind="box" data-ia-show="" data-ia-hide="intro-motivation intro-theory langs-info"><a href="#">Short</a></li>
-         <li class="ia-choice" data-ia-key="ch2" data-ia-ui-kind="box" data-ia-show="intro-motivation" data-ia-hide="intro-theory langs-info"><a href="#">Practice</a></li>
-         <li class="ia-choice" data-ia-key="ch3" data-ia-ui-kind="box" data-ia-show="intro-theory langs-info" data-ia-hide="intro-motivation"><a href="#">Theory</a></li>
-         <li class="ia-choice" data-ia-key="ch4" data-ia-ui-kind="box" data-ia-show="intro-motivation intro-theory langs-info" data-ia-hide=""><a href="#">All</a></li>
+         <li class="ia-choice" data-ia-key="ch1" data-ia-ui-kind="box" data-ia-show="" data-ia-hide="intro-motivation intro-theory langs-info langs-impl-1 langs-impl-2 langs-impl-3"><a href="#">Short</a></li>
+         <li class="ia-choice" data-ia-key="ch2" data-ia-ui-kind="box" data-ia-show="intro-motivation langs-impl-1 langs-impl-2" data-ia-hide="intro-theory langs-info langs-impl-3"><a href="#">Practice</a></li>
+         <li class="ia-choice" data-ia-key="ch3" data-ia-ui-kind="box" data-ia-show="intro-theory langs-info langs-impl-3" data-ia-hide="intro-motivation langs-impl-1 langs-impl-2"><a href="#">Theory</a></li>
+         <li class="ia-choice" data-ia-key="ch4" data-ia-ui-kind="box" data-ia-show="intro-motivation intro-theory langs-info langs-impl-1 langs-impl-2 langs-impl-3" data-ia-hide=""><a href="#">All</a></li>
        </ul>
       </div>
     </div>
@@ -461,64 +461,39 @@
     it asks for and so the program runs correctly!</p>
     
     </div></div></div>    
-    <<<<
-
-    
+    <<<<    
     </div>
   </div>
   
-  <div class="row coeff-demo" data-coeff-mode="flat" data-coeff-kind="implicit" id="impl1">
-    <div class="col-md-6" data-coeff-editor="impl1">
-      >>>>
-      
-      Implicit parameters tutorial
-      ----------------------------
-      
-      Implicit parameters are the simplest example of coeffects. In our first langauge, 
-      you can use `?foo` to access a value that has to be provided by the environment.
-      We'll use numbers, but the same would work for resources like GPS sensors or printers:
-      
-          [lang=coeffects-flat-impl]
-          ?fst + ?snd
-      
-      When you create a function, it can read parameters that are available in the 
-      current scope (this is [lexical scoping](https://en.wikipedia.org/wiki/Scope_(computer_science)#Lexical_scoping)),
-      but it can also read parameters that are available when the function is called (this is
-      [dynamic scoping](https://en.wikipedia.org/wiki/Scope_(computer_science)#Dynamic_scoping)).
 
-      Dynamic scoping is useful when you have a deep chain of function calls and you want to add a parameter 
-      to it. With implicit parameters, you do not have to explicitly pass it around in each 
-      function of the chain. For example:
-      
-          [lang=coeffects-flat-impl]
-          let dyn = 
-            (fun snd -> ?fst + snd) in
-          let ?fst = 10 in dyn ?other
-      
-      The function `demo` uses a parameter `?fst` but we assign it a value later when we call the 
-      function. The coeffect system tracks the required implicit parameters and it won't allow calling the
-      function if we do not provide a value. You can see (in a tooltip for `demo`) that the type of 
-      the function is `int -{ ?fst:int }-> int`. Coeffects also support lexical scoping and capture 
-      parameters that are already in scope:
-      
-          [lang=coeffects-flat-impl]
-          let lex = 
-            let ?fst = 10 in
-            (fun snd -> ?fst + snd) in
-          lex ?other
-  
-      Here, the implicit parameter `?fst` is in scope when `demo` is defined and so the function
-      does not require any implicit parameters. Its type is just `int -> int`. 
-      
-      This is where coeffects differ from effects and monads! If we were using the Reader monad,
-      we would get a function that requires `?fst`. In other words, monads support only 
-      dynamic scoping, but not lexical scoping.
-      <<<<
-      
-    </div>
+  <div class="row new-section">
+    <div class="col-md-6"></div>
     <div class="col-md-6">
-      <div class="callout coeffect-playground" style="padding:30px;margin-bottom:50px;">
-        <h3 style="margin:5px 0px 15px 0px;">Implicit parameters playground</h3>
+      <h2>Implicit parameters
+        <span style="margin-left:30px;position:relative;top:-5px">
+          <span class="ia-choice ia-ui-circle" data-ia-undoable="true" data-ia-key="langs-syntax-1" data-ia-ui-kind="circle" data-ia-show="langs-syntax-1" data-ia-hide=""
+            title="Click here to expand &#10;documentation on syntax">
+            <i class="fa fa-search"></i>
+          </span>
+          <span class="ia-choice ia-ui-circle" data-ia-undoable="true" data-ia-key="langs-impl-1" data-ia-ui-kind="circle" data-ia-show="langs-impl-1" data-ia-hide=""
+            title="Click here for more detailed &#10;version of the sample explanations">
+            <i class="fa fa-industry"></i>
+          </span>
+          <span class="ia-choice ia-ui-circle" data-ia-undoable="true" data-ia-key="langs-impl-2" data-ia-ui-kind="circle" data-ia-show="langs-impl-2" data-ia-hide=""
+            title="Click here for more detailed &#10;version of the sample explanations">
+            <i class="fa fa-industry"></i>
+          </span>      
+          <span class="ia-choice ia-ui-circle" data-ia-undoable="true" data-ia-key="langs-impl-3" data-ia-ui-kind="circle" data-ia-show="langs-impl-3" data-ia-hide=""
+            title="Click here for more detailed &#10;version of the sample explanations">
+            <i class="fa fa-institution"></i>
+          </span>      
+        </span>      
+      </h2>
+    </div>
+  </div>
+  <div class="row coeff-demo" data-coeff-mode="flat" data-coeff-kind="implicit" id="impl1">
+    <div class="col-md-6">
+      <div class="callout coeffect-playground" style="padding:30px;margin:0px 10px 30px 0px;">
         <p>Choose a sample from the tutorial or write your own snippet using 
           <code>?param</code> to access an implicit parameter value!</p>
 
@@ -541,37 +516,324 @@
         </div>
         <div style="clear:both"></div>
       </div>
-      
-      <div class="ia-choice ia-ui-bar-right" data-ia-undoable="true" data-ia-key="ch8" data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="langs-details" data-ia-hide="">
       >>>>
+      <div class="ia-choice ia-ui-bar-left" data-ia-undoable="true" data-ia-key="langs-syntax-1" 
+        data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="langs-syntax-1" data-ia-hide="">
       
-      What exactly is allowed?
+      Supported syntax in the coeffect language includes numbers and operators, variables and
+      implicit parameters, let binding, function values and application.
       
-      <<<<
       </div>
+      <div class="ia" data-ia-key="langs-syntax-1" data-ia-mode="long">
+            
+       - Numbers `42`, variables `foo` and implicit parameters `?foo`
+       - Numerical operators `+`, `-`, `*`, `/` and `^`
+       - Let binding `let x = e1 in e2` where `in` is required
+       - Application `e1 e2` and functions `fun x -> e`
+       - For a named function use `let f = fun x -> ...`.
+       
+      </div>
+      <<<<      
     </div>
-  </div>
-  
-  <div class="row ia new-section" data-ia-key="langs-details" data-ia-mode="long">
-    <div class="hidden-sm col-md-1"></div>
-    <div class="col-sm-8 col-md-7 rside">
+    <div class="col-md-6" data-coeff-editor="impl1">
       >>>>
-      And the really tricky one.
+      <div class="ia-choice ia-ui-bar-right" data-ia-undoable="true" data-ia-key="langs-impl-1" 
+        data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="langs-impl-1" data-ia-hide="">
       
+      Implicit parameters are the simplest example of coeffects. In our first langauge, 
+      you can use `?foo` to access a value that has to be provided by the environment.
+      
+      </div>
+          
+          [lang=coeffects-flat-impl]
+          ?fst + ?snd
+      
+      <div class="ia" data-ia-key="langs-impl-1" data-ia-mode="long">
+      
+      When you load the snippet in the editor, you will need to enter values for `?fst` and `?snd`
+      before you can run the code. This is because the two values are the required _coeffects_ of
+      the expression. We use numbers, but the same mechanism would work for resources like GPS 
+      sensors or printers.
+      
+      </div>
+
+      ### Static and dynamic scoping
+        
+      <div class="ia-choice ia-ui-bar-right" data-ia-undoable="true" data-ia-key="langs-impl-2" 
+        data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="langs-impl-2" data-ia-hide="">
+      
+      When you create a function, it can read parameters that are available in the 
+      current scope (this is [lexical scoping](https://en.wikipedia.org/wiki/Scope_(computer_science)#Lexical_scoping)),
+      but it can also read parameters that are available when the function is called (this is
+      [dynamic scoping](https://en.wikipedia.org/wiki/Scope_(computer_science)#Dynamic_scoping)).
+
+      </div>
+      <div class="ia" data-ia-key="langs-impl-2" data-ia-mode="long">
+
+      Dynamic scoping is useful when you want to add a parameter to a function in a deeply
+      nested chain of calls. With implicit parameters, you do not have to explicitly pass it 
+      around in each function. For example:
+
+      </div>
       
           [lang=coeffects-flat-impl]
-          let f = 
-            let ?y = 10 in
-            (fun x -> x + ?y + ?z) in
-          let ?y = 5 in f 5        
+          let dyn = 
+            (fun snd -> ?fst + snd) in
+          let ?fst = 10 in dyn ?other
 
+      <div class="ia" data-ia-key="langs-impl-2" data-ia-mode="long">
+      
+      The function `dyn` uses a parameter `?fst`. We set the parameter value when we _call_ the 
+      function. The coeffect system tracks the required implicit parameters and it won't allow calling the
+      function if we do not provide a value. You can see (in a tooltip for `dyn`) that the type of 
+      the function is `num -{ ?fst:num }-> num`. 
+      
+      However, coeffects also support lexical scoping and capture parameters that are already in scope:
+
+      </div>
+      
+          [lang=coeffects-flat-impl]
+          let lex = 
+            let ?fst = 10 in
+            (fun snd -> ?fst + snd) in
+          lex ?other
+
+      <div class="ia" data-ia-key="langs-impl-2" data-ia-mode="long">
+  
+      The implicit parameter `?fst` is in scope when `lex` is defined and so the function
+      does not require any implicit parameters. Its type is `num -> num`. 
+      
+      This is where coeffects differ from effects and monads! If we were using the Reader monad,
+      we would get a function that requires `?fst`. In other words, monads support only 
+      dynamic scoping, but not lexical scoping.
+      
+      </div>
+      
+      ### Resolving ambiguity
+        
+      <div class="ia-choice ia-ui-bar-right" data-ia-undoable="true" data-ia-key="langs-impl-3" 
+        data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="langs-impl-3" data-ia-hide="">
+      
+      A fun question is, what happens when the parameter `?fst` is available in both the 
+      lexical scope (when defining function) and the dynamic scope (when calling the function).
+      Run the code sample to see whether `?fst` becomes 100 or 200!
+
+      </div>
+      
+          [lang=coeffects-flat-impl]
+          let both = 
+            let ?fst = 100 in
+            (fun trd -> ?fst + ?snd + trd) in
+          let ?fst = 200 in both 1
+
+      <div class="ia" data-ia-key="langs-impl-3" data-ia-mode="long">
+        
+      The type of `both` is `num -{ ?snd:num }-> num`, which suggests that parameters available in 
+      the lexical scope are always captured (this is the case of `?fst` here). In other words, 
+      the _lambda abstraction_ rule in our type system splits the coeffects of the body so that only 
+      requirements that cannot be satisfied from the current lexical scope (when defining the 
+      function) are delayed and are required when calling the function.
+      
+      For more information about how this works, scroll down to the [type system section](#typesystem),
+      which shows the typing derivations for these examples.
+
+      </div>      
       <<<<
+      
     </div>
   </div>
+  <div class="row new-section">
+    <div class="col-md-6">
+      <h2>Dataflow computations
+        <span style="margin-left:30px;position:relative;top:-5px">
+          <span class="ia-choice ia-ui-circle" data-ia-undoable="true" data-ia-key="langs-syntax-2" data-ia-ui-kind="circle" data-ia-show="langs-syntax-2" data-ia-hide=""
+            title="Click here to expand &#10;documentation on syntax">
+            <i class="fa fa-search"></i>
+          </span>
+          <span class="ia-choice ia-ui-circle" data-ia-undoable="true" data-ia-key="langs-df-1" data-ia-ui-kind="circle" data-ia-show="langs-df-1" data-ia-hide=""
+            title="Click here for more detailed &#10;version of the sample explanations">
+            <i class="fa fa-industry"></i>
+          </span>
+          <span class="ia-choice ia-ui-circle" data-ia-undoable="true" data-ia-key="langs-df-2" data-ia-ui-kind="circle" data-ia-show="langs-df-2" data-ia-hide=""
+            title="Click here for more detailed &#10;version of the sample explanations">
+            <i class="fa fa-industry"></i>
+          </span>      
+          <span class="ia-choice ia-ui-circle" data-ia-undoable="true" data-ia-key="langs-df-3" data-ia-ui-kind="circle" data-ia-show="langs-df-3" data-ia-hide=""
+            title="Click here for more detailed &#10;version of the sample explanations">
+            <i class="fa fa-institution"></i>
+          </span>      
+        </span>      
+      </h2>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-6" data-coeff-editor="df1">
+      >>>>
+      <div class="ia-choice ia-ui-bar-left" data-ia-undoable="true" data-ia-key="langs-df-1" 
+        data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="langs-df-1" data-ia-hide="">
+      
+      In dataflow languages, each expression denotes a _stream_ of values. The streams can be low-level
+      like hardware signals or high-level such as mouse position in modern reactive programming. In our
+      langauge, you can use the `prev` keyword to access the previous value of a stream. Coeffects 
+      infer how many past values a function may access.
+      
+      </div>
+            
+          [lang=coeffects-structural-df]
+          fun n -> (n + prev n) / 2
+      
+      <div class="ia" data-ia-key="langs-df-1" data-ia-mode="long">
+      
+      This function calculates the average between the _current_ and the _previous_ value. The
+      type of the function is `num -{ 1 }-> num` denoting that it needs one last value. Try
+      removing `prev` altogether or looking further into the history using `prev (prev n)` to see 
+      how the number of required past values changes!
+      
+      </div>
+      <div class="coeff-demo" data-coeff-editor="df1fl" data-coeff-mode="flat" data-coeff-kind="dataflow" id="df1fl">
+
+      ### Structural and flat coeffects
+      
+      <div class="ia-choice ia-ui-bar-left" data-ia-undoable="true" data-ia-key="langs-df-2" 
+        data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="langs-df-2" data-ia-hide="">
+            
+      Coeffects can track information in two ways. _Flat_ coeffects track one piece of information 
+      for the whole expression while _structural_ coeffects have one piece of information for each
+      variable. Implicit parameters are flat, but dataflow coeffects can work in both ways.
+
+      The following snippet is checked using the flat coeffect system. The type of `flat` says
+      that we need one past value of both `x` and `y`:
+      
+      </div>
+      <div class="pre-edit" id="switch1">
+      <a id="df1fl-btn" style="display:none; right:95px"><i class="fa fa-check-square-o"></i>check</a>
+      <a onclick="$('#switch1 pre, #switch1 textarea, #df1fl-btn').toggle()"><i class="fa fa-pencil-square-o"></i> edit</a>
+        
+          [lang=coeffects-flat-df-autoload]
+          let flat x y = x + prev y in
+          flat
+      
+      <div class="prelike">
+      <textarea class="prelike" id="df1fl-input" style="height:80px;display:none">let flat x y = x + prev y in
+      flat</textarea></div>
+      </div>
+      <div style="margin-top:-15px">
+      <p id="df1fl-judgement" style="margin-right:40px" data-tex-color-prefix=""></p>
+      <p id="df1fl-judgement-temp" style="display:none"></p></div>
+      <div class="ia" data-ia-key="langs-df-2" data-ia-mode="long">
+      
+      When checking the body `x + prev y`, the flat system infers that the required number of past
+      values is 1. There is just one number for the whole expression, so the system does not capture
+      the fact that we're only accessing past value of the variable `y`. Try changing the body to
+      `x + y` or to `prev (x + y)` and see how the inferred type changes. Click "edit" and then
+      "check" to type-check the code snippet.
+      
+      </div>
+      </div>
+      <div class="coeff-demo" data-coeff-editor="df1st" data-coeff-mode="structural" data-coeff-kind="dataflow" id="df1st">
+      <div class="ia-choice ia-ui-bar-left" data-ia-undoable="true" data-ia-key="langs-df-2" 
+        data-ia-ui-kind="circle" data-ia-ui-prop="border-color" data-ia-show="langs-df-2" data-ia-hide="">
+
+      The following snippet is checked using the structural coeffect system. The type of `struct`
+      says that we need one past value of `y` but only the current value of `x`:
+
+      </div>
+      <div class="pre-edit" id="switch2">
+      <a id="df1st-btn" style="display:none; right:95px"><i class="fa fa-check-square-o"></i>check</a>
+      <a onclick="$('#switch2 pre, #switch2 textarea, #df1st-btn').toggle()"><i class="fa fa-pencil-square-o"></i> edit</a>
+        
+          [lang=coeffects-structural-df-autoload]
+          let struct x y = x + prev y in
+          struct
+      
+      <div class="prelike">
+      <textarea class="prelike" id="df1st-input" style="height:80px;display:none">let struct x y = x + prev y in
+      struct</textarea></div>
+      </div>
+      <div style="margin-top:-15px">
+      <p id="df1st-judgement" style="margin-right:40px" data-tex-color-prefix=""></p>
+      <p id="df1st-judgement-temp" style="display:none"></p></div>      
+      <div class="ia" data-ia-key="langs-df-2" data-ia-mode="long">
+      
+      The structural system keeps one annotation for each variable. When checking the body `x + prev y`,
+      it infers that we access the current value of `x` and one past value of `y`. This is
+      reflected in the type of the function. Try changing the body in the same way as previously
+      and see how the type of the function changes!
+      
+      </div>
+      </div>
+
+      ### Something else
+      
+      That
+      
+          [lang=coeffects-struct-df]
+          let f x y = x + prev y in
+          f
+          
+      <<<<
+      <div style="display:none;width:1000px;height:100px;background:red;" id="mf">
+        <span style="left:10px;top:10px;display:block;position:relative;width:10px;height:10px;background:yellow" id="mv"></span>
+      </div>
+      <script src="http://smoothiecharts.org/smoothie.js"></script>
+      <canvas width="400" height="100" id="myDiv"></canvas>
+      <script>
+        var xseries = new TimeSeries();
+        var yseries = new TimeSeries();
+      
+        var handler = function(event) { 
+          event.preventDefault();
+          var px = event.pageX || event.originalEvent.targetTouches[0].pageX;
+          var py = event.pageY || event.originalEvent.targetTouches[0].pageY;
+          xseries.append(new Date().getTime(), px - $(this).offset().left);
+          yseries.append(new Date().getTime(), py - $(this).offset().top);
+        };
+        $("#mf").on("touchmove", handler);
+        $("#mf").on("mousemove", handler);
+
+        function createTimeline() {
+          var chart = new SmoothieChart({ millisPerPixel:5 });
+          chart.addTimeSeries(xseries, { strokeStyle: 'rgba(0, 255, 0, 1)', fillStyle: 'rgba(0, 255, 0, 0.2)', lineWidth: 4 });
+          chart.addTimeSeries(yseries, { strokeStyle: 'rgba(0, 255, 0, 1)', fillStyle: 'rgba(0, 255, 0, 0.2)', lineWidth: 4 });
+          chart.streamTo(document.getElementById("myDiv"), 500);
+        }        
+        
+        //$(function() { createTimeline(); });
+      </script>
+      
+    </div>
+    <div class="col-md-6 coeff-demo" data-coeff-mode="structural" data-coeff-kind="dataflow" id="df1">
+      <div class="callout coeffect-playground" style="padding:30px;margin:0px 0px 30px 10px;">
+        <h3 style="margin:5px 0px 15px 0px;">Implicit parameters playground</h3>
+        <p>Choose a sample from the tutorial or write your own snippet using 
+          <code>?param</code> to access an implicit parameter value!</p>
+
+        <textarea class="form-control" id="df1-input">fun n -> (n + prev n) / 2</textarea>
+        <button class="btn btn-success" id="df1-btn"><i class="fa fa-check"></i>Check snippet</button>
+        <script>$(function() { $("#df1-btn").trigger("click"); });</script>
+        
+        <p id="df1-error" style="clear:both;"></p>
+        <div id="df1-no-error">
+          <p style="clear:both;">The program is well-typed. The type system reports the following 
+            type and coeffect information:</p>
+          
+          <p id="df1-judgement" data-tex-color-prefix="l"></p>
+          <p id="df1-judgement-temp" style="display:none"></p>
+          
+          <!--
+          <p id="df1-playground-no-ui">The context of the expression requires no implicit parameters. You can just run it.</p>
+          <p id="df1-playground-ui">The expression requires some implicit parameter values. You can set their values here:</p>
+          <div id="df1-playground">
+          </div>
+        -->
+        </div>
+        <div style="clear:both"></div>
+      </div>
+    </div>    
+  </div>  
 </div>
 
-
-<div class="outline" style="margin-top:200px">
+<div class="outline new-section">
   <div class="body container">
     <h2><a name="typesystem">Type systems</a></h2>
   </div>
@@ -680,26 +942,6 @@ Long scrolling text here... Ovi lispmd idr. Blah goo bar foor foo.  Ovi lispmd i
   
   
 </div>
-</div>
-<div class="container coeff-demo" data-coeff-mode="structural" data-coeff-kind="dataflow" id="df1">
-  <div class="row">
-    <div class="col-md-6">
-      <textarea class="form-control" id="df1-input" style="font-family:inconsolata; height:150px">fun x -> fun y -> x + prev y</textarea>
-      <button class="btn btn-success" id="df1-btn">Do stuff</button>
-      <div id="df1-playground">
-      </div>
-    </div>
-    <div class="col-md-6">
-      <pre id="df1-output">(Output goes here...)</pre>
-      <pre id="df1-transl">(Output goes here...)</pre>
-    </div>
-  </div>
-  <div class="row">
-    <div class="col-md-12">
-      <p id="df1-typetree"></p>
-      <p id="df1-typetree-temp" style="display:none"></p>
-    </div>
-  </div>
 </div>
 
 <<<<

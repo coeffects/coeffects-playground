@@ -20,7 +20,7 @@ let letter = pred (fun c -> (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
 let number = pred (fun c -> (c >= '0' && c <= '9'))
 
 let integer = oneOrMore number |> map (fun digits ->
-  Token.Integer(1 * int (System.String(Array.ofList digits))) )
+  Token.Number(1.0 * float (System.String(Array.ofList digits))) )
 
 let operator = pred operators.Contains |> map (fun op ->
   Token.Operator(op.ToString()) )

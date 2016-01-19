@@ -18,7 +18,7 @@ type Token =
   | Prev
   | Comma
   | Operator of string
-  | Integer of int
+  | Number of float
   | Ident of string
   | QIdent of string
   | White of string
@@ -76,7 +76,7 @@ type Expr<'T> =
   | Let of TypedPat<'T> * Typed<'T> * Typed<'T>
   | App of Typed<'T> * Typed<'T>
   | Var of string
-  | Integer of int
+  | Number of float
   | Binary of string * Typed<'T> * Typed<'T>
   // Coeffect language-only
   | Prev of Typed<'T>
@@ -102,6 +102,20 @@ type CoeffVars = Map<string, Coeffect * Type>
 /// Provides helper functions for working with `Expr<'T>` and `Typed<'T>` values
 module Expr = 
 
+  /// Recognizes a function with one or more parameters
+  let rec (|Funs|_|) e = 
+    match e with
+    | Expr.Fun(pat, Typed(_, Funs(pats, body))) -> Some(pat::pats, body)
+    | Expr.Fun(pat, body) -> Some([pat], body)
+    | _ -> None
+
+  /// Recognizes a let binding with optional (function) parameters
+  let (|Lets|_|) e = 
+    match e with
+    | Expr.Let(pat, Typed(_, Funs(pats, assign)), body) -> Some(pat::pats, assign, body)
+    | Expr.Let(pat, assign, body) -> Some([pat], assign, body)
+    | _ -> None
+
   /// Transform the type annotations in the specified pattern using the provided function
   let rec mapTypePat f (TypedPat(t, p)) =
     let p = 
@@ -119,7 +133,7 @@ module Expr =
       | Expr.App(e1, e2) -> Expr.App(mapType f e1, mapType f e2)
       | Expr.Binary(op, e1, e2) -> Expr.Binary(op, mapType f e1, mapType f e2)
       | Expr.Fun(pats, e) -> Expr.Fun(mapTypePat f pats, mapType f e)
-      | Expr.Integer(n) -> Expr.Integer(n)
+      | Expr.Number(n) -> Expr.Number(n)
       | Expr.Let(pat, e1, e2) -> Expr.Let(mapTypePat f pat, mapType f e1, mapType f e2)
       | Expr.QVar(v) -> Expr.QVar(v)
       | Expr.Var(v) -> Expr.Var(v)
@@ -150,7 +164,7 @@ module ExprShape =
     | Expr.Tuple es -> Nested(e, es)
     | Expr.QVar _
     | Expr.Var _
-    | Expr.Integer _
+    | Expr.Number _
     | Expr.Builtin _ -> Leaf(e)
 
   let recreate e args =
@@ -159,7 +173,7 @@ module ExprShape =
     | Expr.App(_, _), [e1; e2] -> Expr.App(e1, e2)
     | Expr.Binary(op, _, _), [e1; e2] -> Expr.Binary(op, e1, e2)
     | Expr.Fun(pats, _), [e] -> Expr.Fun(pats, e)
-    | Expr.Integer(n), _ -> Expr.Integer(n)
+    | Expr.Number(n), _ -> Expr.Number(n)
     | Expr.Let(pat, _, _), [e1; e2] -> Expr.Let(pat, e1, e2)
     | Expr.QVar(v), _ -> Expr.QVar(v)
     | Expr.Var(v), _ -> Expr.Var(v)

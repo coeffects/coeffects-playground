@@ -95,12 +95,12 @@ module Client =
         |> html "Run"
         |> click (fun () ->
           let input = Value.ListComonad [ for _ in 0 .. m -> Value.Unit ]
-          let arg = Value.ListComonad [ for _, i in pastValues -> Value.Integer(1 * unbox(i._val())) ]
+          let arg = Value.ListComonad [ for _, i in pastValues -> Value.Number(1.0 * unbox(i._val())) ]
           let res = 
             let (Value.Function f | Fail "Expected function!" f) = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle
             f arg
           match res with 
-          | Value.Integer n -> Globals.window.alert(string n)
+          | Value.Number n -> Globals.window.alert(string n)
           | _ -> Globals.window.alert("Something weird") )
         |> appendTo pl |> ignore
 
@@ -122,10 +122,10 @@ module Client =
           input
               
         let evaluate () = 
-          let input = Value.ImplicitsComonad(Value.Unit, Map.ofList [ for c, i in inputs -> c, Value.Integer(1 * unbox(i._val())) ])
+          let input = Value.ImplicitsComonad(Value.Unit, Map.ofList [ for c, i in inputs -> c, Value.Number(1.0 * unbox(i._val())) ])
           let res = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle
           match res with 
-          | Value.Integer n -> result._val(string n) |> ignore
+          | Value.Number n -> result._val(string n) |> ignore
           | Value.Function _ -> result._val("<function>") |> ignore
           | Value.Tuple _ -> result._val("<tuple>") |> ignore
           | Value.Unit _ -> result._val("()") |> ignore
@@ -247,7 +247,7 @@ module Client =
     transl.innerHTML <- Html.print (Html.printExpr kind prefix 0 [] e)
     Globals.eval("setupTooltips()") |> ignore
 
-  let reportError prefix msg = 
+  let reportError prefix source msg = 
     let error = jq("#" + prefix + "-error")
     let noerror = jq("#" + prefix + "-no-error")
     match msg with
@@ -255,7 +255,7 @@ module Client =
         error.html(err).show() |> ignore
         noerror.hide() |> ignore
         if int error.length = 0 then
-          Globals.window.alert("Parsing or type checking failed.\n\n" + (jq(error).text()))
+          Globals.window.alert("Parsing or type checking failed.\n\n" + (jq(err).text()) + "\n\nSource:\n" + source)
     | None -> 
         error.hide() |> ignore
         noerror.show() |> ignore
@@ -288,40 +288,39 @@ module Client =
         | _ -> Errors.parseError "Check that everything is syntactically valid. For example, you might be missing the <code>in</code> keyword."
     | _ -> Errors.parseError "Unexpected token. You might be trying to use some unsupported operator or keyword."
 
+
+  let reload kind mode prefix value = 
+    try
+      let typed = typeCheckSoruce value kind mode 
+      if hasFeature prefix "output" then
+        setupHtmlOutput prefix "output" kind typed
+
+      tryGetFeature prefix "typetree" "tex-color-prefix" 
+      |> Option.iter (fun clr -> setupTypeDerivation clr prefix kind typed)
+
+      tryGetFeature prefix "judgement" "tex-color-prefix" 
+      |> Option.iter (fun clr -> setupJudgement clr prefix kind typed)
+
+      if mode = CoeffectMode.Flat then      
+        let transle  = 
+          Translation.translate (Typed((), Expr.Builtin("input", []))) [] typed 
+          |> Translation.contract
+          |> TypeChecker.typeCheck (Translation.builtins (TypeChecker.coeff typed)) (CoeffectKind.Embedded kind) CoeffectMode.None
+
+        if hasFeature prefix "transl" then
+          setupHtmlOutput prefix "transl" kind transle
+
+        if hasFeature prefix "playground" then
+          let (Typed(tyinfo, _)) = typed
+          setupPlayground prefix kind tyinfo transle
+      reportError prefix value None
+    with e ->
+      reportError prefix value (Some(e.ToString()))
+
   let setup kind mode prefix = 
     let btn = Globals.document.getElementById(prefix + "-btn") :?> HTMLButtonElement
     let input = Globals.document.getElementById(prefix + "-input") :?> HTMLTextAreaElement
-
-    btn.addEventListener_click(fun e ->
-      try
-        let typed = typeCheckSoruce input.value kind mode 
-        if hasFeature prefix "output" then
-          setupHtmlOutput prefix "output" kind typed
-
-        tryGetFeature prefix "typetree" "tex-color-prefix" 
-        |> Option.iter (fun clr -> setupTypeDerivation clr prefix kind typed)
-
-        tryGetFeature prefix "judgement" "tex-color-prefix" 
-        |> Option.iter (fun clr -> setupJudgement clr prefix kind typed)
-
-        if mode = CoeffectMode.Flat then      
-          let transle  = 
-            Translation.translate (Typed((), Expr.Builtin("input", []))) [] typed 
-            |> Translation.contract
-            |> TypeChecker.typeCheck (Translation.builtins (TypeChecker.coeff typed)) (CoeffectKind.Embedded kind) CoeffectMode.None
-
-          if hasFeature prefix "transl" then
-            setupHtmlOutput prefix "transl" kind transle
-
-          if hasFeature prefix "playground" then
-            let (Typed(tyinfo, _)) = typed
-            setupPlayground prefix kind tyinfo transle
-        reportError prefix None
-        null
-      with e ->
-        reportError prefix (Some(e.ToString()))
-        null
-    )
+    btn.addEventListener_click(fun _ -> reload kind mode prefix input.value; null)
 
   let main () =
     let counter = ref 0
@@ -338,17 +337,22 @@ module Client =
         elif lang.Contains("struct") then CoeffectMode.Structural
         else failwith ("Unknown mode: " + lang)
 
-      let link = jq("<a><i class=\"fa fa-pencil-square-o\"></i> load</a>")
-      jthis().parent().append(link).addClass("pre-play") |> ignore
-      link.on("click", fun _ _ ->
-        let rec findEditor (je:JQuery) = 
-          let ed = unbox<string> (je.data("coeff-editor"))
-          if ed <> null then ed
-          else findEditor (je.parent())
-        let ed = findEditor (jthis())
-        jq("#" + ed + "-input")._val(source) |> ignore
-        jq("#" + ed + "-btn").trigger("click") |> ignore
-        null) |> ignore
+      let rec findEditor (je:JQuery) = 
+        let ed = unbox<string> (je.data("coeff-editor"))
+        if ed <> null then ed
+        else findEditor (je.parent())
+
+      if lang.Contains("autoload") then
+        let prefix = findEditor (jthis())
+        reload kind mode prefix source
+      else
+        let link = jq("<a><i class=\"fa fa-pencil-square-o\"></i> load</a>")
+        jthis().parent().append(link).addClass("pre-play") |> ignore
+        link.on("click", fun _ _ ->
+          let prefix = findEditor (jthis())
+          reload kind mode prefix source
+          jq("#" + prefix + "-input")._val(source) |> ignore
+          null) |> ignore
 
       let typed = typeCheckSoruce source kind mode 
       let prefix = "fmtpre" + (string counter.Value)
@@ -377,23 +381,22 @@ let script =
   translate <@ Client.main() @>
   |> sprintf "$(function() { %s })"
 
+let processFile file = 
+  let fi = File.ReadAllText(Path.Combine(__SOURCE_DIRECTORY__, "web", file))
+  let reg = RegularExpressions.Regex(">>>>(.*?)<<<<", RegularExpressions.RegexOptions.Singleline)
+  let counter = ref 0
+  reg.Replace(fi,RegularExpressions.MatchEvaluator(fun m -> 
+    let md = m.Groups.[1].Value.Split [|'\n'|]
+    let drop = md |> Seq.filter (System.String.IsNullOrWhiteSpace >> not) |> Seq.map (Seq.takeWhile ((=) ' ') >> Seq.length) |> Seq.min
+    let md = md |> Seq.map (fun s -> if System.String.IsNullOrWhiteSpace s then s else s.Substring(drop)) |> String.concat "\n"
+    let doc = FSharp.Literate.Literate.ParseMarkdownString(md)
+    incr counter
+    FSharp.Literate.Literate.WriteHtml(doc, prefix=sprintf "s%d" counter.Value, lineNumbers=false) ))
+
 let app = 
   choose 
-    [ path "/" >>= request (fun r ->
-        let fi = File.ReadAllText(Path.Combine(__SOURCE_DIRECTORY__, "web", "index.html"))
-        let reg = RegularExpressions.Regex(">>>>(.*?)<<<<", RegularExpressions.RegexOptions.Singleline)
-        let counter = ref 0
-        let f = reg.Replace(fi,RegularExpressions.MatchEvaluator(fun m -> 
-          let md = m.Groups.[1].Value.Split [|'\n'|]
-          let drop = md |> Seq.filter (System.String.IsNullOrWhiteSpace >> not) |> Seq.map (Seq.takeWhile ((=) ' ') >> Seq.length) |> Seq.min
-          let md = md |> Seq.map (fun s -> if System.String.IsNullOrWhiteSpace s then s else s.Substring(drop)) |> String.concat "\n"
-          let doc = FSharp.Literate.Literate.ParseMarkdownString(md)
-          //let doc = FSharp.Literate.Literate.FormatLiterateNodes(doc)
-          incr counter
-          FSharp.Literate.Literate.WriteHtml(doc, prefix=sprintf "s%d" counter.Value, lineNumbers=false) 
-          ))
-        Successful.OK f      
-      )
+    [ path "/" >>= request (fun r -> Successful.OK (processFile "index.html"))
+      path "/about" >>= request (fun r -> Successful.OK (processFile "about.html"))
       path "/test" >>= Files.file (Path.Combine(__SOURCE_DIRECTORY__, "web", "test.html"))
       Files.browse (Path.Combine(__SOURCE_DIRECTORY__, "web"))
       path "/script.js" >>= Successful.OK script ]
