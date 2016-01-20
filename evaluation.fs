@@ -84,23 +84,23 @@ let evalImplicits ctx (Typed(_, expr)) =
   | Expr.Builtin("counit", _) ->
       Value.Function(fun (Value.ImplicitsComonad(v, _) | Fail "Expected comonad value" v) -> v ) |> Some
 
-  | Expr.Builtin("cobind", [r; s]) ->
+  | Expr.Builtin("cobind", [Annotation.Flat r; Annotation.Flat s]) ->
       Value.Function(fun (Value.Function(f) | Fail "Expected function" f) ->
         Value.Function(fun (Value.ImplicitsComonad(v, d) | Fail "Expected comonad" (v, d)) ->
           let r, s = Solver.ImplicitParams.evalCoeffect Map.empty r, Solver.ImplicitParams.evalCoeffect Map.empty s
           let a = f (Value.ImplicitsComonad(v, restrict d r))
           Value.ImplicitsComonad(a, restrict d s))) |> Some
 
-  | Expr.Builtin("letimpl", [Coeffect.ImplicitParam(n, _); _; _]) ->
+  | Expr.Builtin("letimpl", [Annotation.Flat(Coeffect.ImplicitParam(n, _)); _; _]) ->
       Value.Function(fun (Value.Tuple [Value.ImplicitsComonad(c, d); v] | Fail "Expected tuple with implicit comonad" (c,d,v) ) ->
         Value.ImplicitsComonad(c, Map.add n v d) ) |> Some
    
-  | Expr.Builtin("split", [r; s]) ->
+  | Expr.Builtin("split", [Annotation.Flat r; Annotation.Flat s]) ->
       Value.Function(fun (Value.ImplicitsComonad(Value.Tuple [v1; v2], d) | Fail "Expected comonad of tuple" (v1,v2,d)) ->
         let r, s = Solver.ImplicitParams.evalCoeffect Map.empty r, Solver.ImplicitParams.evalCoeffect Map.empty s
         Value.Tuple [Value.ImplicitsComonad(v1, restrict d r); Value.ImplicitsComonad(v1, restrict d s)] ) |> Some
 
-  | Expr.Builtin("lookup", [Coeffect.ImplicitParam(n, _)]) -> 
+  | Expr.Builtin("lookup", [Annotation.Flat(Coeffect.ImplicitParam(n, _))]) -> 
       Value.Function(fun (ImplicitsComonad(_, d) | Fail "Expected comonad value" d) -> d.[n]) |> Some
 
   | _ -> None
@@ -121,7 +121,7 @@ let evalDataflow ctx (Typed(_, expr)) =
   | Expr.Builtin("counit", _) ->
       Value.Function(fun (Value.ListComonad [v] | Fail "Expected comonad value" v) -> v ) |> Some
 
-  | Expr.Builtin("cobind", [r; s]) ->
+  | Expr.Builtin("cobind", [Annotation.Flat r; Annotation.Flat s]) ->
       Value.Function(fun (Value.Function(f) | Fail "Expected function" f) ->
         Value.Function(fun (Value.ListComonad(vs) | Fail "Expected comonad" vs) ->
           let r, s = Solver.Dataflow.evalCoeffect Map.empty r, Solver.Dataflow.evalCoeffect Map.empty s
@@ -129,7 +129,7 @@ let evalDataflow ctx (Typed(_, expr)) =
             [ for i in 0 .. s ->
                 vs |> skip i |> take (r+1) |> Value.ListComonad |> f ])) |> Some
 
-  | Expr.Builtin("split", [r; s]) ->
+  | Expr.Builtin("split", [Annotation.Flat r; Annotation.Flat s]) ->
       Value.Function(fun (Value.ListComonad(vs) | Fail "Expected comonad of tuple" vs) ->
         let a, b = vs |> List.map (fun (Value.Tuple[a;b] | Fail "Expected tuple" (a,b)) -> a, b) |> unzip
         let r, s = Solver.Dataflow.evalCoeffect Map.empty r, Solver.Dataflow.evalCoeffect Map.empty s

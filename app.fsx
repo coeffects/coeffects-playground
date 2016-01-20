@@ -97,7 +97,7 @@ module Client =
           let input = Value.ListComonad [ for _ in 0 .. m -> Value.Unit ]
           let arg = Value.ListComonad [ for _, i in pastValues -> Value.Number(1.0 * unbox(i._val())) ]
           let res = 
-            let (Value.Function f | Fail "Expected function!" f) = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle
+            let (Value.Function f | Fail "Expected function!" f) = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle // Flat input!
             f arg
           match res with 
           | Value.Number n -> Globals.window.alert(string n)
@@ -123,7 +123,7 @@ module Client =
               
         let evaluate () = 
           let input = Value.ImplicitsComonad(Value.Unit, Map.ofList [ for c, i in inputs -> c, Value.Number(1.0 * unbox(i._val())) ])
-          let res = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle
+          let res = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle // Flat input
           match res with 
           | Value.Number n -> result._val(string n) |> ignore
           | Value.Function _ -> result._val("<function>") |> ignore
@@ -255,7 +255,7 @@ module Client =
         error.html(err).show() |> ignore
         noerror.hide() |> ignore
         if int error.length = 0 then
-          Globals.window.alert("Parsing or type checking failed.\n\n" + (jq(err).text()) + "\n\nSource:\n" + source)
+          Globals.window.alert("Parsing or type checking failed.\n\n" + (jq("<p>" + err + "</p>").text()) + "\n\nSource:\n" + source)
     | None -> 
         error.hide() |> ignore
         noerror.show() |> ignore
@@ -288,9 +288,8 @@ module Client =
         | _ -> Errors.parseError "Check that everything is syntactically valid. For example, you might be missing the <code>in</code> keyword."
     | _ -> Errors.parseError "Unexpected token. You might be trying to use some unsupported operator or keyword."
 
-
   let reload kind mode prefix value = 
-    try
+//    try
       let typed = typeCheckSoruce value kind mode 
       if hasFeature prefix "output" then
         setupHtmlOutput prefix "output" kind typed
@@ -301,21 +300,21 @@ module Client =
       tryGetFeature prefix "judgement" "tex-color-prefix" 
       |> Option.iter (fun clr -> setupJudgement clr prefix kind typed)
 
-      if mode = CoeffectMode.Flat then      
-        let transle  = 
-          Translation.translate (Typed((), Expr.Builtin("input", []))) [] typed 
-          |> Translation.contract
-          |> TypeChecker.typeCheck (Translation.builtins (TypeChecker.coeff typed)) (CoeffectKind.Embedded kind) CoeffectMode.None
+      let transle  = 
+        ( if mode = CoeffectMode.Flat then Translation.Flat.translate (Typed((), Expr.Builtin("input", []))) [] typed 
+          else Translation.Structural.translate None [] typed ) 
+        |> Translation.contract
+        |> TypeChecker.typeCheck (Translation.builtins (TypeChecker.coeff typed)) (CoeffectKind.Embedded kind) CoeffectMode.None
 
-        if hasFeature prefix "transl" then
-          setupHtmlOutput prefix "transl" kind transle
+      if hasFeature prefix "transl" then
+        setupHtmlOutput prefix "transl" kind transle
 
-        if hasFeature prefix "playground" then
-          let (Typed(tyinfo, _)) = typed
-          setupPlayground prefix kind tyinfo transle
+      if hasFeature prefix "playground" then
+        let (Typed(tyinfo, _)) = typed
+        setupPlayground prefix kind tyinfo transle
       reportError prefix value None
-    with e ->
-      reportError prefix value (Some(e.ToString()))
+  //  with e ->
+    //  reportError prefix value (Some(e.ToString()))
 
   let setup kind mode prefix = 
     let btn = Globals.document.getElementById(prefix + "-btn") :?> HTMLButtonElement

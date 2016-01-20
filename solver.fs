@@ -23,9 +23,12 @@ let rec solve constraints assigns cequals =
       solve ((l1, l2)::(r1, r2)::rest) assigns ((cf1, cf2)::(cs1, cs2)::cequals)
   | (Type.Tuple(ls), Type.Tuple(rs))::rest when List.length ls = List.length rs ->
       solve ((List.zip ls rs) @ rest) assigns cequals
-  | (Type.Comonad(c1, t1), Type.Comonad(c2, t2))::rest ->
+  | (Type.FlatComonad(c1, t1), Type.FlatComonad(c2, t2))::rest ->
       //printfn "COMO: %A\n  = %A" (Type.Comonad(c1, t1)) (Type.Comonad(c2, t2))
       solve ((t1,t2) :: rest) assigns ((c1, c2)::cequals)
+  | (Type.StructuralComonad(c1, t1), Type.StructuralComonad(c2, t2))::rest when List.length c1 = List.length c2 ->
+      //printfn "COMO: %A\n  = %A" (Type.Comonad(c1, t1)) (Type.Comonad(c2, t2))
+      solve ((t1,t2) :: rest) assigns (List.zip c1 c2 @ cequals)
   | (t1, t2)::_ ->
       Errors.typeMismatch t1 t2
 
@@ -46,7 +49,10 @@ let normalizeType evalc solutions typ =
   // Recursively normalize the type
   let rec loop evalc solutions typ =
     match typ with 
-    | Type.Comonad(c, t) -> Type.Comonad(evalc c, loop evalc solutions t)
+    | Type.FlatComonad(c, t) -> 
+        Type.FlatComonad(evalc c, loop evalc solutions t)
+    | Type.StructuralComonad(c, t) -> 
+        Type.StructuralComonad(List.map evalc c, loop evalc solutions t)
     | Type.Variable s -> 
         match Map.tryFind s solutions with
         | Some t -> loop evalc solutions t

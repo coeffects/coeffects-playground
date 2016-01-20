@@ -56,7 +56,8 @@ and [<RequireQualifiedAccess>] Type =
   | Func of (Coeffect * Coeffect) * Type * Type
   | Tuple of list<Type>
   // Translation target langauge-only
-  | Comonad of Coeffect * Type
+  | FlatComonad of Coeffect * Type
+  | StructuralComonad of Coeffect list * Type
 
 /// Represents a pattern of the coeffect language
 [<RequireQualifiedAccess>]
@@ -68,6 +69,10 @@ type Pattern<'T> =
 /// Represents a pattern with a type annotation of generic type
 and TypedPat<'T> =
   | TypedPat of 'T * Pattern<'T>  
+
+type Annotation =
+  | Flat of Coeffect
+  | Structural of Coeffect list
 
 /// Represents an expression of the coeffect language
 [<RequireQualifiedAccess>]
@@ -82,7 +87,7 @@ type Expr<'T> =
   | Prev of Typed<'T>
   | QVar of string
   // Translation target language-only
-  | Builtin of string * Coeffect list
+  | Builtin of string * Annotation list
   | Tuple of list<Typed<'T>>
 
 /// Represents an expression with a type annotation of generic type

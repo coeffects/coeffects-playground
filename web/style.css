@@ -421,7 +421,7 @@ span.k { color:#0000ff; }
 /* comment */
 span.c { color:#008000; }
 /* operators */
-span.o { color:#000000; }
+span.o, span.op { color:#800080; }
 /* numbers */
 span.n { color:#000000; }
 /* line number */

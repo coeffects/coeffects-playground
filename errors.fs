@@ -18,7 +18,8 @@ let rec formatCoeffect = function
   | Coeffect.ImplicitParam(s, _) -> "?" + s
 
 let rec formatType = function 
-  | Type.Comonad(_, t) -> "C " + formatType t
+  | Type.FlatComonad(c, t) -> "C " + formatCoeffect c + " " + formatType t
+  | Type.StructuralComonad(cs, t) -> "C [" + (List.map formatCoeffect cs |> String.concat ", ") + "] " + formatType t
   | Type.Func(_, t1, t2) -> "(" + formatType t1 + " -&gt; " + formatType t2 + ")"
   | Type.Primitive t -> t
   | Type.Tuple(tys) -> "(" + (String.concat " * " (List.map formatType tys)) + ")"

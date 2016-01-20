@@ -22,21 +22,21 @@ open Coeffects.Solver
 open Coeffects.Translation
 
 
-let source = "fun z -> let struct x y = x + prev y in struct z"
+let source = "fun x -> fun y -> x"
 let (Parsec.Parser lex) = Lexer.lexer
 let tokens = lex (List.ofArray (source.ToCharArray())) |> Option.get |> snd
 let tokens' = tokens |> List.filter (function Token.White _ -> false | _ -> true)
 let (Parsec.Parser pars) = Parser.expr ()
 let expr = pars tokens' |> Option.get |> snd
-let builtins, kind, mode = (fun _ _ -> failwith "!"), CoeffectKind.PastValues, CoeffectMode.Structural
-let typed = TypeChecker.typeCheck builtins kind mode expr
+let builtins1, kind, mode = (fun _ _ -> failwith "!"), CoeffectKind.PastValues, CoeffectMode.Structural
+let typed = TypeChecker.typeCheck builtins1 kind mode expr
     
+let builtins2, kind2, mode2 = Translation.builtins (TypeChecker.coeff typed), CoeffectKind.Embedded kind, CoeffectMode.None
 
-let builtins, kind, mode = Translation.builtins (TypeChecker.coeff typed), CoeffectKind.Embedded kind, CoeffectMode.None
-let expr = 
-  Translation.translate (Typed((), Expr.Builtin("input", []))) [] typed 
-  |> Translation.contract
-expr |> TypeChecker.typeCheck (Translation.builtins (TypeChecker.coeff typed)) kind CoeffectMode.None
+//Translation.Structural.
+Translation.Structural.translate None [] typed 
+|> Translation.contract
+|> TypeChecker.typeCheck builtins2 kind2 mode2
 
 
 let typ (Typed((_, t), _)) = t

@@ -11,7 +11,7 @@ open Coeffects.Solver
 
 /// Context that is propagated from the bottom to the leafs in type checking
 type InputContext = 
-  { BuiltinTypings : InputContext -> string * Coeffect list -> Type
+  { BuiltinTypings : InputContext -> string * Annotation list -> Type
     Variables : Vars
     CoeffectKind : CoeffectKind
     CoeffectMode : CoeffectMode

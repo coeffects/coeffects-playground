@@ -743,12 +743,15 @@
       <a onclick="$('#switch2 pre, #switch2 textarea, #df1st-btn').toggle()"><i class="fa fa-pencil-square-o"></i> edit</a>
         
           [lang=coeffects-structural-df-autoload]
+          0
+      
+      nada
+      
           let struct x y = x + prev y in
           struct
       
       <div class="prelike">
-      <textarea class="prelike" id="df1st-input" style="height:80px;display:none">let struct x y = x + prev y in
-      struct</textarea></div>
+      <textarea class="prelike" id="df1st-input" style="height:80px;display:none">0</textarea></div>
       </div>
       <div style="margin-top:-15px">
       <p id="df1st-judgement" style="margin-right:40px" data-tex-color-prefix=""></p>
@@ -854,6 +857,39 @@ Long scrolling text here... Ovi lispmd idr. Blah goo bar foor foo.  Ovi lispmd i
 Long scrolling text here... Ovi lispmd idr. Blah goo bar foor foo.  Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo. Ovi lispmd idr. Blah goo bar foor foo.
 
 </div>
+</div>
+
+<div class="row">
+  <div class="col-md-10 coeff-demo" data-coeff-mode="structural" data-coeff-kind="dataflow" id="df2">
+    <div class="coeffect-playground">
+      <h3 style="margin:5px 0px 15px 0px;">Implicit parameters playground</h3>
+      <p>Choose a sample from the tutorial or write your own snippet using 
+        <code>?param</code> to access an implicit parameter value!</p>
+
+      <textarea class="form-control" id="df2-input">0</textarea>
+      <button class="btn btn-success" id="df2-btn"><i class="fa fa-check"></i>Check snippet</button>
+      <script>$(function() { $("#df2-btn").trigger("click"); });</script>
+      
+      <p id="df2-error" style="clear:both;"></p>
+      <div id="df2-no-error">
+        <p style="clear:both;">The program is well-typed. The type system reports the following 
+          type and coeffect information:</p>
+      </div>
+        
+        <p id="df2-typetree" data-tex-color-prefix=""></p>
+        <p id="df2-typetree-temp" style="display:none"></p>
+
+        <pre id="df2-transl">
+        </pre>
+        
+        <p id="df2-playground-no-ui">The context of the expression requires no implicit parameters. You can just run it.</p>
+        <p id="df2-playground-ui">The expression requires some implicit parameter values. You can set their values here:</p>
+        <div id="df2-playground">
+        </div>
+      
+      <div style="clear:both"></div>
+    </div>
+  </div>    
 </div>
 
 <div class="row">

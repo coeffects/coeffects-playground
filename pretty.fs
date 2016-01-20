@@ -167,7 +167,23 @@ module Html =
   /// Print type annotation to the given array
   and printTyp kind typ (sb:string[]) = 
     match typ with 
-    | Type.Comonad(cl, t) ->
+    | Type.StructuralComonad(cls, t) ->
+        sb.push("C [")
+        let mutable first = true
+        for cl in cls do
+          if first then first <- false 
+          else sb.push(", ")
+          match flattenCoeffects kind cl with
+          | PrimitiveCoeffect.PastValues n -> 
+              sb.push(string n)
+          | PrimitiveCoeffect.ResourceSet coeffs -> 
+              sb.push("{ ")
+              printCoeff kind coeffs sb
+              sb.push(" }")
+        sb.push("] ")
+        printTyp kind t sb
+
+    | Type.FlatComonad(cl, t) ->
         sb.push("C ")
         match flattenCoeffects kind cl with
         | PrimitiveCoeffect.PastValues 0 
@@ -180,7 +196,7 @@ module Html =
             sb.push(" } ")
         printTyp kind t sb
 
-    | Type.Variable s -> sb.push("'"); sb.push(s)
+    | Type.Variable s -> sb.push(s)
     | Type.Tuple(ts) ->
         sb.push("(")
         printTyp kind (List.head ts) sb |> ignore
@@ -197,7 +213,8 @@ module Html =
           elif cs = Coeffect.None then cf
           else Errors.unexpected "Pretty printer cannot format coeffect langauge expression with mixed flat and structural coeffects."
         match flattenCoeffects kind c with
-        | PrimitiveCoeffect.ResourceSet [] -> 
+        | PrimitiveCoeffect.PastValues 0 
+        | PrimitiveCoeffect.ResourceSet [] ->
             sb.push(" -&gt; ")
         | PrimitiveCoeffect.PastValues n -> 
             sb.push(" -{ " + string n + " }-&gt; ")
@@ -228,7 +245,7 @@ module Html =
     // Generate the body and then call wrapping functions
     ( match expr with
       | Expr.Var(s) -> span ["title", inl (printTyp kind typ); "class","i"] s 
-      | Expr.Builtin(s, _) -> span ["class","op"] s 
+      | Expr.Builtin(s, _) -> span ["title", inl (printTyp kind typ); "class","op"] s 
       | Expr.QVar(s) -> span ["title", inl (printTyp kind typ); "class","i"] ("?" + s)
       | Expr.Number(n) -> span ["class","n"] (string n)
       | Expr.Prev(e) -> span ["class","k"] "prev" ++ text " " ++ printExpr kind prefix thisPrec (0::path) e
@@ -326,7 +343,7 @@ module MathJax =
       | Expr.Var(v) -> ar |> inl v
       | Expr.QVar(v) -> ar |> inl ("?" + v)
       | Expr.Number(n) -> ar |> num n
-      | Expr.Prev(e) -> ar |> kvd "prev" |> limit limLength (expr thisPrec e) (inl "\\ldots")
+      | Expr.Prev(e) -> ar |> kvd "prev" |> inl "~" |> limit limLength (expr thisPrec e) (inl "\\ldots")
       | Expr.App(e1, e2) ->
          ar |> expr lPrec e1 |> inl "~" |> expr rPrec e2
       | Expr.Let(pat, arg, body) ->
@@ -373,8 +390,10 @@ module MathJax =
   and typ kind colored t (ar:string[]) =
     if colored then ar.push("{\\color{typ} ")
     match t with
-    | Type.Comonad(c, t) ->
+    | Type.FlatComonad(c, t) ->
         ar |> inl "C^{" |> coeff kind true c |> inl "}" |> ignore
+    | Type.StructuralComonad(c, t) ->
+        ar |> inl "C^{\\langle" |> sep (inl ",") (List.map (coeff kind true) c) |> inl "\\rangle}" |> ignore
     | Type.Tuple(ts) ->
         ar |> inl "(" |> sep (inl "\\ast") (List.map (typ kind colored) ts) |> inl ")" |> ignore
     | Type.Func((cf, cs), t1, t2) -> 
