@@ -7,30 +7,48 @@ module Coeffects.Solver
 open Coeffects
 open Coeffects.Ast
 
+let substitute v1 other = 
+  let rec substitute t = 
+    match t with 
+    | Type.Variable v2 when v1 = v2 -> other
+    | Type.Variable v2 -> Type.Variable v2
+    | Type.FlatComonad(c, t) -> Type.FlatComonad(c, substitute t)
+    | Type.Func(c, t1, t2) -> Type.Func(c, substitute t1, substitute t2)
+    | Type.StructuralComonad(c, t) -> Type.StructuralComonad(c, substitute t)
+    | Type.Tuple(ts) -> Type.Tuple(List.map substitute ts)
+    | Type.Primitive p -> Type.Primitive p
+  List.map (fun (t1, t2) -> substitute t1, substitute t2)
+
 /// Solve type equality constraints and produce assignments for type variables.
 /// Also produce equality constraints between coeffects appearing in functions
 let rec solve constraints assigns cequals =
-  match constraints with
-  | [] -> assigns, cequals
-  | (other, Type.Variable v)::rest
-  | (Type.Variable v, other)::rest ->
-      match Map.tryFind v assigns with
-      | Some(found) -> solve ((other, found)::rest) assigns cequals
-      | None -> solve rest (Map.add v other assigns) cequals
-  | (l, r)::rest when l = r -> solve rest assigns cequals
-  | (Type.Func((cf1,cs1), l1, r1), Type.Func((cf2,cs2), l2, r2))::rest ->
-      //printfn "FUNC: %A\n  = %A" (Type.Func(c1, l1, r1)) (Type.Func(c2, l2, r2))
-      solve ((l1, l2)::(r1, r2)::rest) assigns ((cf1, cf2)::(cs1, cs2)::cequals)
-  | (Type.Tuple(ls), Type.Tuple(rs))::rest when List.length ls = List.length rs ->
-      solve ((List.zip ls rs) @ rest) assigns cequals
-  | (Type.FlatComonad(c1, t1), Type.FlatComonad(c2, t2))::rest ->
-      //printfn "COMO: %A\n  = %A" (Type.Comonad(c1, t1)) (Type.Comonad(c2, t2))
-      solve ((t1,t2) :: rest) assigns ((c1, c2)::cequals)
-  | (Type.StructuralComonad(c1, t1), Type.StructuralComonad(c2, t2))::rest when List.length c1 = List.length c2 ->
-      //printfn "COMO: %A\n  = %A" (Type.Comonad(c1, t1)) (Type.Comonad(c2, t2))
-      solve ((t1,t2) :: rest) assigns (List.zip c1 c2 @ cequals)
-  | (t1, t2)::_ ->
-      Errors.typeMismatch t1 t2
+  let step (constraints, assigns, cequals) = 
+    match constraints with
+    | [] -> Choice1Of2(assigns, cequals)
+    | (l, r)::rest when l = r -> Choice2Of2(rest, assigns, cequals)
+    | (Type.Func((cf1,cs1), l1, r1), Type.Func((cf2,cs2), l2, r2))::rest ->
+        Choice2Of2((l1, l2)::(r1, r2)::rest, assigns, (cf1, cf2)::(cs1, cs2)::cequals)
+    | (Type.Tuple(ls), Type.Tuple(rs))::rest when List.length ls = List.length rs ->
+        Choice2Of2((List.zip ls rs) @ rest, assigns, cequals)
+    | (Type.FlatComonad(c1, t1), Type.FlatComonad(c2, t2))::rest ->
+        Choice2Of2((t1,t2) :: rest, assigns, (c1, c2)::cequals)
+    | (Type.StructuralComonad(c1, t1), Type.StructuralComonad(c2, t2))::rest when List.length c1 = List.length c2 ->
+        Choice2Of2((t1,t2) :: rest, assigns, List.zip c1 c2 @ cequals)
+    | (other, Type.Variable v)::rest
+    | (Type.Variable v, other)::rest ->
+        match Map.tryFind v assigns with
+        | Some(found) -> Choice2Of2((other, found)::rest, assigns, cequals)
+        | None -> Choice2Of2(substitute v other rest,Map.add v other assigns, cequals)
+    | (t1, t2)::_ ->
+        Errors.typeMismatch t1 t2
+
+  let mutable result = None
+  let mutable state = constraints, assigns, cequals
+  while Option.isNone result do
+    match step state with
+    | Choice1Of2 r -> result <- Some r
+    | Choice2Of2 s -> state <- s
+  result.Value
 
 /// Replace solved type variables with the assigned types
 /// (and also transform coeffects using the given function)
@@ -135,6 +153,9 @@ module ImplicitParams =
   /// iteratively adapt the assignments using the generated constraints (and using implicit 
   /// parameter-specific tricks)
   let solve constrs =
+    Trace.log "*** Solving implicit params coeffect constraints ***"
+    for c1, c2 in constrs do
+      Trace.log [| Trace.formatCoeffect c1; Trace.formatCoeffect c2 |]
 
     // Turn equality between variables into equivalence classes & filter out the constraints
     // Also drop all 'None' coeffects, which are to be ignored 
@@ -198,6 +219,9 @@ module Dataflow =
   /// Solve coeffect constraints for data-flow. Start with 0 for all variables and
   /// keep recalculating them until a fixed point is reached.
   let solve constrs  =
+    Trace.log "*** Solving dataflow coeffect constraints ***"
+    for c1, c2 in constrs do
+      Trace.log [| Trace.formatCoeffect c1; Trace.formatCoeffect c2 |]
 
     // Turn equality between variables into equivalence classes
     // Turn 'merge(r, s) = X' constraints from 'fun' into equivalence 

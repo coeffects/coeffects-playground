@@ -334,11 +334,20 @@ let rec check ctx (Typed((), e)) : Typed<CoeffVars * Coeffect * Type> * ResultCo
 
 let typeCheck builtins kind mode expr : Typed<CoeffVars * Coeffect * Type> =
   let annotated, ctx = check (Context.empty builtins kind mode) expr
+  Trace.log ""
+  Trace.log "*** Solving type equalities ***"
+  for t1, t2 in ctx.TypeConstraints do
+    Trace.log [| Trace.formatType t1; Trace.formatType t2 |]
+
   let solved, cequals = solve ctx.TypeConstraints Map.empty []
     
   let normalizeCoeffect = 
     match kind with
     | CoeffectKind.Embedded c ->
+        Trace.log "*** Solving embedded coeffect constraints ***"
+        for c1, c2 in cequals do
+          Trace.log [| Trace.formatCoeffect c1; Trace.formatCoeffect c2 |]
+
         let equal c1 c2 = 
           match c with
           | CoeffectKind.ImplicitParams -> ImplicitParams.evalCoeffect Map.empty c1 = ImplicitParams.evalCoeffect Map.empty c2

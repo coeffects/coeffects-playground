@@ -104,6 +104,15 @@ type CoeffVars = Map<string, Coeffect * Type>
 // Helper fucntions for working with the AST
 // ------------------------------------------------------------------------------------------------
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Type = 
+  /// Recognizes functions of shape `T1 -> (T2 ... -> TN)`
+  let rec (|Funcs|_|) t =
+    match t with 
+    | Type.Func((c1, c2), t1, Funcs(inputs, t2)) ->Some(((c1, c2), t1)::inputs, t2)
+    | Type.Func((c1, c2), t1, t2) ->Some([(c1, c2), t1], t2)
+    | _ -> None
+
 /// Provides helper functions for working with `Expr<'T>` and `Typed<'T>` values
 module Expr = 
 

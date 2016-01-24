@@ -7,17 +7,15 @@
   <script src="//code.jquery.com/jquery-2.1.4.min.js"></script>
   <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha256-KXn5puMvxCw+dAYznun+drMdG1IFl3agK0p/pqT9KAo= sha512-2e8qq0ETcfWRI4HJBzQiA3UoyFk6tbNyG+qSaIBZLyW9Xf3sWZHN/lxe9fTh1U45DpPf07yj94KsUHHWe4Yk1A==" crossorigin="anonymous"></script>
   <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet" integrity="sha256-7s5uDGW3AHqw6xtJmNNtr+OBRJUlgkNJEo78P4b0yRw= sha512-nNo+yCHEyn0smMxSswnf/OnX6/KwJuZTlNZBjauKhTK0c+zT+q5JOCx0UFhXQ6rJR9jg6Es8gPuD2uZcYDLqSw==" crossorigin="anonymous">
-  <link href='//fonts.googleapis.com/css?family=Inconsolata' rel='stylesheet' type='text/css'>
+  <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet">
   <script src='//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
   <script type="text/x-mathjax-config">
     MathJax.Hub.Config({ TeX: { extensions: ["color.js"] }});
   </script>  
-  <script src="/script.js"></script>
-  <style>
-    .k { color: #0000a0; }
-    .n { color: #008000; }
-    .op { color: #800080; }
-  </style>
+  <link rel="stylesheet" href="style.css" />
+  <script src="interactive.js" type="text/javascript"></script>
+  <script src="tips.js" type="text/javascript"></script>
+  <script src="script.js" type="text/javascript"></script>
 </head>
 <body>
   <div style="display:none">
@@ -44,12 +42,12 @@
 
   <div class="container"><div class="row"><h1>Implicit parameters</h1></div></div>
 
-  <div class="container" id="impl1">
+  <div class="container coeff-demo" data-coeff-mode="flat" data-coeff-kind="implicit" id="impl1">
     <div class="row">
       <div class="col-md-6">
         <textarea class="form-control" id="impl1-input" style="font-family:inconsolata; height:150px"></textarea>
         <button class="btn btn-success" id="impl1-btn">Do stuff</button>
-        <div id="impl1-playground">
+        <div id="impl1-playground" style="margin-top:20px">
         </div>
       </div>
       <div class="col-md-6">
@@ -67,12 +65,12 @@
 
   <div class="container"><div class="row"><h1>Structural dataflow</h1></div></div>
 
-  <div class="container" id="df2">
+  <div class="container coeff-demo" data-coeff-mode="structural" data-coeff-kind="dataflow" id="df2">
     <div class="row">
       <div class="col-md-6">
         <textarea class="form-control" id="df2-input" style="font-family:inconsolata; height:150px"></textarea>
         <button class="btn btn-success" id="df2-btn">Do stuff</button>
-        <div id="df2-playground">
+        <div id="df2-playground" style="margin-top:20px">
         </div>
       </div>
       <div class="col-md-6">
@@ -90,12 +88,12 @@
 
   <div class="container"><div class="row"><h1>Flat dataflow</h1></div></div>
 
-  <div class="container" id="df1">
+  <div class="container coeff-demo" data-coeff-mode="flat" data-coeff-kind="dataflow" id="df1">
     <div class="row">
       <div class="col-md-6">
         <textarea class="form-control" id="df1-input" style="font-family:inconsolata; height:150px"></textarea>
         <button class="btn btn-success" id="df1-btn">Do stuff</button>
-        <div id="df1-playground">
+        <div id="df1-playground" style="margin-top:20px">
         </div>
       </div>
       <div class="col-md-6">

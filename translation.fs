@@ -105,20 +105,26 @@ module Flat =
         failwith "Not supported"
 
 module Structural = 
+  let choose f xs =
+    List.fold (fun acc x -> match f x with Some y -> y::acc | None -> acc) [] xs |> List.rev
+ 
   let Builtin(s, ans) = Expr.Builtin(s, [ for a in ans -> Annotation.Structural(a)])
 
-  let rec translate (ctx:option<_>) vars (Typed((cv:CoeffVars,_,t), e)) = 
-    
-    let ctx, vars = 
-      match ctx, vars with
-      | None, [] -> ctx, []
-      | None, _ -> failwith "Expected empty variables"
-      | Some ctx, vars when vars |> List.forall cv.ContainsKey -> Some ctx, vars
-      | Some ctx, vars ->
-          let flags = [ for v in vars -> if cv.ContainsKey v then "1" else "0" ] 
-          let coeffs = [ for v in vars do match cv.TryFind v with Some c -> yield fst c | _ -> () ] 
-          Some(!Builtin("choose_" + String.concat "" flags, [coeffs]) |@| ctx), [ for v in vars do if cv.ContainsKey v then yield v ]
+  /// Transforms the context represented by an expression `ctx` and containing
+  /// variables with coeffects as specified by `vars` into a new context containing
+  /// just variables that are bound in `coeff`.
+  let transformContext ctx (vars:list<string * Coeffect>) (coeff:CoeffVars) =
+    // Generate flags (which vars are included), source & target coeffects for them
+    let flags = vars |> List.map (fun (v, _) -> if coeff.ContainsKey v then "1" else "0")
+    let coeffs = vars |> choose (fun (v, c1) -> coeff.TryFind v |> Option.map (fun (c2, _) -> v, (c1, c2)))
+    let coeffs1, coeffs2 = List.map (snd >> fst) coeffs, List.map (snd >> snd) coeffs
+    let newVars = coeffs |> List.map (fun (v, (_, c)) -> v, c)
+    !Builtin("choose_" + String.concat "" flags, [coeffs1; coeffs2]) |@| ctx, newVars
 
+  let rec translate ctx (vars:list<string * Coeffect>) (Typed((cv:CoeffVars,c,t), e)) = 
+    
+    let ctx, vars = transformContext ctx vars cv
+  
     match e with
     | Expr.Number(n) ->
         !Expr.Number(n)
@@ -126,31 +132,61 @@ module Structural =
     | Expr.Var(v) ->
         if cv |> Map.toList |> List.map fst <> [v] then failwith "Expected just one variable"        
         let c = [ fst (cv.[v]) ]
-        !Builtin("counit", [c]) |@| ctx.Value
+        !Builtin("counit", [c]) |@| ctx
 
     | Expr.Fun(TypedPat(_, Pattern.Var v), e) ->
-        let r = [ for v in vars -> fst (cv.[v]) ]
-        let s = [ (match t with Type.Func((_, c), _, _) -> c | _ -> failwith "Not a function!") ]
+        let r = [ for v, _ in vars -> fst (cv.[v]) ]
+        let varC, varT = match t with Type.Func((_, c), t, _) -> c, t | _ -> failwith "Not a function!"
+        let s = [ varC ]
         let merged = 
-          match ctx with 
-          | Some ctx -> Expr.App(!Builtin("merge", [s; r]), !Expr.Tuple([!Expr.Var(v); ctx]))
-          | None -> Expr.Var(v)
-        !Expr.Fun(!!Pattern.Var(v), translate (Some (!merged)) (v::vars) e)
+          Expr.App(!Builtin("merge", [s; r]), !Expr.Tuple([!Expr.Var(v); ctx]))
+
+        !Expr.Fun(!!Pattern.Var(v), translate (!merged) ((v, varC)::vars) e)
 
     | Expr.Prev(e) ->
-        let r = [ for v in vars -> fst (cv.[v]) ]
-        let r' = [ for v in vars -> match fst (cv.[v]) with Coeffect.Past n -> Coeffect.Past(n-1) | _ -> failwith "Unexpected coeffect in prev."]
-        translate (ctx |> Option.map (fun ctx -> !Builtin("prev", [r; r']) |@| ctx)) vars e
+        let infos = [ for v, c in vars -> match c with Coeffect.Past n -> c, Coeffect.Past(n-1), v | _ -> failwith "Unexpected coeffect in prev." ]
+        let r = [ for c, _ , _ in infos -> c ]
+        let r' = [ for _, c, _ in infos -> c ]
+        let vars = [ for _, c, v in infos -> v, c ]
+        translate (!Builtin("prev", [r; r']) |@| ctx) vars e
 
     | Expr.Binary(op, e1, e2) ->
-        !Expr.Binary(op, translate ctx vars e1, translate ctx vars e2)
+        (*let r, s = coeff e1, coeff e2
+        match ctx with
+        | Some ctx ->
+            let ctxSplit = !Builtin("split", [r; s]) |@| ctx
+            let body = !Expr.Binary(op, translate (Some (!Expr.Var("ctx1"))) vars e1, translate (Some (!Expr.Var("ctx2"))) vars e2)
+            !Expr.Let(!!Pattern.Tuple([!!Pattern.Var("ctx1"); !!Pattern.Var("ctx2")]), ctxSplit, body)
+        | None ->*)
+            !Expr.Binary(op, translate ctx vars e1, translate ctx vars e2)
 
-    // App, Fun, Let
+    // App, Let
+
+    | Expr.App(e1, e2) ->
+        let t = match typ e1 with Type.Func((_, c), _, _) -> c | _ -> failwith "Not a function!"        
+        let (ctx1, vars1), (ctx2, vars2) = 
+          transformContext ctx vars (cvars e1), 
+          transformContext ctx vars (Map.map (fun _ (s, typ) -> s ** t, typ) (cvars e2))
+
+        let _, vars2' = transformContext ctx vars (cvars e2)
+        let s = List.map snd vars2'
+
+        //let ctxSplit = !Builtin("split", [r; s ** t]) |@| (!Builtin("duplicate", [r ++ (s ** t)]) |@| ctx)
+        let cobind = 
+          let fn = !Expr.Fun(!!Pattern.Var("ctx"), translate (!Expr.Var("ctx")) vars2' e2)
+          !Builtin("cobind", [s; [t]]) |@| fn |@| ctx2
+        //let body = 
+        translate ctx1 vars1 e1 |@| cobind
+        //!Expr.Let(!!Pattern.Tuple([!!Pattern.Var("ctx1"); !!Pattern.Var("ctx2")]), ctxSplit, body)
+
+    | Expr.Let(TypedPat(_, Pattern.Var v) as p, e1, e2) -> 
+        let varC, varT = (cvars e2).[v]
+        let tinfos = Map.remove v (cvars e2), Coeffect.None, Type.Func((Coeffect.None, varC), varT, t)
+        translate ctx vars (Typed((cv,c,t), Expr.App(Typed.Typed(tinfos, Expr.Fun(p, e2)), e1)))
 
     | Expr.QVar _
     | Expr.Tuple _
     | Expr.Builtin _ 
-    | Expr.Let(_, _, _)
     | Expr.Fun(_, _) ->
         failwith "Not supported"
     //| _ -> failwith "!"
@@ -230,9 +266,13 @@ let rec contract (Typed(t, e)) =
   match e with
   | Expr.Fun(TypedPat(_, Pattern.Var v1), Typed(tb, Expr.App(e1, Typed(ta, Expr.Var v2)))) when v1 = v2 ->
       contract e1
+  | Expr.App(Typed(_, Expr.Builtin(str, [Annotation.Structural cs1; Annotation.Structural cs2])), earg) when 
+      str.StartsWith("choose_") && cs1 = cs2 && str.Substring("choose_".Length).ToCharArray() |> Array.forall ((=) '1') -> 
+      contract earg
   | ExprShape.Nested(s, es) -> Typed(t, ExprShape.recreate s (List.map contract es))
   | e -> Typed(t, e)
 
+let filter f xs = List.foldBack (fun x xs -> if f x then x::xs else xs) xs [] 
 
 let builtins inputCoeffect (ctx:TypeChecker.InputContext) (n, c:Annotation list) = 
   let cvar() = Coeffect.Variable(ctx.NewCoeffectVar())
@@ -240,7 +280,10 @@ let builtins inputCoeffect (ctx:TypeChecker.InputContext) (n, c:Annotation list)
   let ttvar (c:list<Coeffect>) = Type.Tuple [for _ in c -> tvar()]
   let ( --> ) l r = Type.Func((Coeffect.Use, Coeffect.None), l, r)
   let ( * ) l r = Type.Tuple [l; r]
-  let ( *@* ) l r = match l, r with Type.Tuple l, Type.Tuple r -> Type.Tuple (l @ r) | _ -> failwith "Expected tuple!!"
+  let ( *@* ) l r = 
+    match l, r with 
+    | Type.Tuple l, Type.Tuple r -> Type.Tuple (l @ r) 
+    | _ -> failwith "must be tuple!"
   let Cf c t = Type.FlatComonad(c, t)
   let Cs c t = Type.StructuralComonad(c, t)
   match n, c with
@@ -268,30 +311,36 @@ let builtins inputCoeffect (ctx:TypeChecker.InputContext) (n, c:Annotation list)
   | "counit", [Annotation.Flat(Coeffect.Use | Coeffect.Past 0)] ->
       let a = tvar()
       Cf Coeffect.Use a --> a
-  | "input", [] ->
+  | "finput", [] ->
       Cf inputCoeffect (Type.Primitive "unit")
 
   // Structural
+  | "sinput", [] ->
+      Cs [] (Type.Tuple [])
+
   | "prev", [Annotation.Structural r; Annotation.Structural r'] ->
       let a = ttvar r
       Cs r a --> Cs r' a
 
+  | "cobind", [Annotation.Structural r; Annotation.Structural [s]] ->
+      let a, b = ttvar r, tvar()
+      (Cs r a --> b) --> (Cs [ for r in r -> r ** s ] a --> Cs [s] (Type.Tuple [b]))
   | "counit", [Annotation.Structural [Coeffect.Use | Coeffect.Past 0]] ->
       let a = tvar()
-      Cs [Coeffect.Use] a --> a
+      Cs [Coeffect.Use] (Type.Tuple [a]) --> a
   | "merge", [Annotation.Structural r; Annotation.Structural s] -> 
       let a, b = ttvar r, ttvar s
       Cs r a * Cs s b --> Cs (r @ s) (a *@* b)
 
-  | str, [Annotation.Structural cs] when str.StartsWith("choose_") -> 
-      // e.g. choose_101 [c1; c2] : C <c1, _, c2> (a * b * c) -> C <c1, c2> (a * c)
-      let csin = ref cs
+  | str, [Annotation.Structural cs1; Annotation.Structural cs2] when str.StartsWith("choose_") -> 
+      // e.g. choose_101 [c1; c2] [c1'; c2'] : C <c1, _, c2> (a * b * c) -> C <c1', c2'> (a * c)
+      let csin = ref (List.zip cs1 cs2)
       let next() = let res = List.head csin.Value in csin.Value <- List.tail csin.Value; res
       let infos = 
         [ for c in str.Substring("choose_".Length).ToCharArray() -> 
-          if c = '1' then true, tvar(), next() else false, tvar(), cvar() ]
-      let inputs = infos |> List.map (fun (_, t, c) -> t, c)
-      let outputs = infos |> List.filter (fun (i, _, _) -> i) |> List.map (fun (_, t, c) -> t, c)
+          if c = '1' then true, tvar(), next() else false, tvar(), (let c = cvar() in c, c) ]
+      let inputs = infos |> List.map (fun (_, t, c) -> t, fst c)
+      let outputs = infos |> filter (fun (i, _, _) -> i) |> List.map (fun (_, t, c) -> t, snd c)
       Cs (List.map snd inputs) (Type.Tuple (List.map fst inputs))
         --> Cs (List.map snd outputs) (Type.Tuple (List.map fst outputs))
 

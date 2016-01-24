@@ -45,10 +45,25 @@ type Value =
   | ListComonad of Value list
 
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Value = 
+  let rec (|Functions|_|) value =
+    match value with 
+    | Value.Function(f) -> Some(fun args -> 
+        match args with 
+        | x::xs -> 
+            match f x, xs with 
+            | Functions f, xs -> f xs 
+            | res, [] -> res
+            | _ -> failwith "Too many arguments" 
+        | [] -> failwith "Not enough arguments")
+    | _ -> None
+
 /// Variable assignment kept as a state during the evaluation 
 type EvaluationContext = 
   { Variables : Map<string, Value> 
-    Kind : CoeffectKind }
+    Kind : CoeffectKind 
+    Mode : CoeffectMode }
 
 
 /// Assign values to variables bound in a pattern & return new context
@@ -108,7 +123,7 @@ let evalImplicits ctx (Typed(_, expr)) =
 
 /// Evaluate primitive operations of dataflow coeffect language
 /// Returns `None` when the construct is not a comonadic primitive 
-let evalDataflow ctx (Typed(_, expr)) = 
+let evalFlatDataflow ctx (Typed(_, expr)) = 
   match expr with
   | Expr.Builtin("merge", _) ->
       Value.Function(fun (Value.Tuple [Value.ListComonad(vs1); Value.ListComonad(vs2)] | Fail"Expected tuple of comonads" (vs1,vs2)) ->
@@ -139,6 +154,53 @@ let evalDataflow ctx (Typed(_, expr)) =
       Value.Function(fun (Value.ListComonad vs | Fail "Expected list comonad" (vs) ) ->
         Value.ListComonad(List.tail vs) ) |> Some
    
+  | _ -> None
+
+
+let filter f xs = List.foldBack (fun x xs -> if f x then x::xs else xs) xs [] 
+
+/// Evaluate primitive operations of dataflow coeffect language
+/// Returns `None` when the construct is not a comonadic primitive 
+let evalStructDataflow ctx (Typed(_, expr)) = 
+  match expr with
+  | Expr.Builtin("merge", _) ->
+      Value.Function(fun (Value.Tuple [Value.Tuple vs1; Value.Tuple vs2] | Fail"Expected tuple of tuples" (vs1,vs2)) ->
+        Value.Tuple (vs1 @ vs2)) |> Some
+
+  | Expr.Builtin("counit", _) ->
+      Value.Function(fun (Value.Tuple [Value.ListComonad [v]] | Fail "Expected tuple with single comonad value" v) -> v ) |> Some
+
+  | Expr.Builtin(choose, [Annotation.Structural cs1; Annotation.Structural cs2]) when choose.StartsWith("choose_") ->
+      Value.Function(fun (Value.Tuple vs | Fail "Expected tuple of comonad values" vs) ->
+        let flags = choose.Substring("choose_".Length).ToCharArray() |> List.ofArray
+        let values = List.zip flags vs |> filter (fun (f, _) -> f = '1') |> List.map snd
+        let restrictedValues = 
+          List.map2 (fun (Value.ListComonad past | Fail "Expected comonad" past) c ->
+            let n = Solver.Dataflow.evalCoeffect Map.empty c
+            Value.ListComonad (take (1+n) past) ) values cs2
+        Value.Tuple restrictedValues) |> Some
+
+//  | "cobind", [Annotation.Structural r; Annotation.Structural [s]] ->
+  //    (Cs r a --> b) --> (Cs [ for r in r -> r ** s ] a --> Cs [s] (Type.Tuple [b]))
+
+  | Expr.Builtin("cobind", [Annotation.Structural r; Annotation.Structural [s]]) ->
+      Value.Function(fun (Value.Function(f) | Fail "Expected function" f) ->
+        Value.Function(fun (Value.Tuple(vs) | Fail "Expected tuple of comonads" vs) ->
+          let r, s = List.map (Solver.Dataflow.evalCoeffect Map.empty) r, Solver.Dataflow.evalCoeffect Map.empty s
+          let res = 
+            Value.ListComonad
+              [ for i in 0 .. s -> 
+                  let vars = List.map2 (fun (Value.ListComonad xs | Fail "Expected tuple of comonads" xs) r ->
+                    xs |> skip i |> take (1 + r) |> Value.ListComonad) vs r
+                  f (Value.Tuple vars) ]
+          Value.Tuple [res] )) |> Some
+
+  | Expr.Builtin("prev", _) ->
+      Value.Function(fun (Value.Tuple vs | Fail "Expected tuple of comonads" vs) ->
+        Value.Tuple (vs |> List.map (function 
+          (Value.ListComonad(_::vs) | Fail "Expected comonad with more than 1 value" vs) -> 
+            Value.ListComonad(vs))) ) |> Some
+
   | _ -> None
 
 
@@ -178,7 +240,8 @@ let rec evalPrimitive ctx (Typed(_, expr)) =
       | Some v -> v
       | _ -> Errors.evaluationFailed "Variable access failed. Variable is not in scope."
 
-  | Expr.Builtin("input", _) -> Map.find "input" ctx.Variables
+  | Expr.Builtin("finput", _) -> Map.find "finput" ctx.Variables
+  | Expr.Builtin("sinput", _) -> Map.find "sinput" ctx.Variables
   | Expr.Number n -> Value.Number n
   | _ -> Errors.evaluationFailed "Evaluation failed. Unexpected expression."
 
@@ -186,10 +249,11 @@ let rec evalPrimitive ctx (Typed(_, expr)) =
 /// Evaluate a translated expression in a coeffect programming language
 and eval ctx expr =
   let special = 
-    match ctx.Kind with
-    | CoeffectKind.ImplicitParams -> evalImplicits ctx expr 
-    | CoeffectKind.PastValues -> evalDataflow ctx expr 
-    | _ -> Errors.evaluationFailed "Evaluation failed. The evaluation kind must be <code>ImplicitParams</code> or <code>PastValues</code>."
+    match ctx.Kind, ctx.Mode with
+    | CoeffectKind.ImplicitParams, CoeffectMode.Flat -> evalImplicits ctx expr 
+    | CoeffectKind.PastValues, CoeffectMode.Structural -> evalStructDataflow ctx expr 
+    | CoeffectKind.PastValues, CoeffectMode.Flat -> evalFlatDataflow ctx expr 
+    | _ -> Errors.evaluationFailed "Evaluation failed. Only flat implicit parameters or flat/structural dataflow is supported."
   match special with
   | None -> evalPrimitive ctx expr
   | Some v -> v

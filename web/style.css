@@ -1,7 +1,15 @@
 @import url(http://fonts.googleapis.com/css?family=Inconsolata|Kreon:300,400,700|PT+Sans:400,700,400italic);
 
 /* ------------------------------------------------------------------------------------ *\
-   Header and navigation bar
+
+   #     #
+   #     # ######   ##   #####  ###### #####
+   #     # #       #  #  #    # #      #    #
+   ####### #####  #    # #    # #####  #    #
+   #     # #      ###### #    # #      #####
+   #     # #      #    # #    # #      #   #
+   #     # ###### #    # #####  ###### #    #
+     
 \* ------------------------------------------------------------------------------------ */
 
 #header {
@@ -107,7 +115,15 @@ nav.affix .ia-ui-menu li {
 }
 
 /* ------------------------------------------------------------------------------------ *\
-   Outline with IA boxes for choosing typical layouts
+
+   #######
+   #     # #    # ##### #      # #    # ######
+   #     # #    #   #   #      # ##   # #
+   #     # #    #   #   #      # # #  # #####
+   #     # #    #   #   #      # #  # # #
+   #     # #    #   #   #      # #   ## #
+   #######  ####    #   ###### # #    # ######
+
 \* ------------------------------------------------------------------------------------ */
 
 .outline {
@@ -126,6 +142,11 @@ nav.affix .ia-ui-menu li {
 .outline p, .outline li {
   margin:0px 0px 12px 0px;
 }
+.outline h2 a, .outline h2 a:hover {
+  color:white;
+  text-decoration:none;
+}
+
 .outline .ia-ui-boxes {
   margin:0px 10px 0px 10px;
 }
@@ -172,9 +193,25 @@ nav.affix .ia-ui-menu li {
   .outline div.ia-ui-box { min-height:100px; }  
 }
 
-/* ----------------------------------------------------------------------------------- **
-   Header and navigation bar
-** ------------------------------------------------------------------------------------ */
+/* ------------------------------------------------------------------------------------ *\
+
+  #####
+ #     # #####   ##   #    # #####    ##   #####  #####     #####   ####  #####  #   #
+ #         #    #  #  ##   # #    #  #  #  #    # #    #    #    # #    # #    #  # #
+  #####    #   #    # # #  # #    # #    # #    # #    #    #####  #    # #    #   #
+       #   #   ###### #  # # #    # ###### #####  #    #    #    # #    # #    #   #
+ #     #   #   #    # #   ## #    # #    # #   #  #    #    #    # #    # #    #   #
+  #####    #   #    # #    # #####  #    # #    # #####     #####   ####  #####    #
+  
+\* ------------------------------------------------------------------------------------ */
+
+.new-section {
+  margin-top:30px;
+}
+
+.new-big-section {
+  margin-top:60px;
+}
 
 .body {
   padding-top:50px;
@@ -183,6 +220,11 @@ nav.affix .ia-ui-menu li {
 .body h2 {
   font: 21pt Kreon,'Times New Roman',times,serif;
 }
+
+.body .flspan {
+  display:none;
+}
+
 @media (min-width: 992px) {
   .body .lside h2 {  
     float:left;
@@ -195,15 +237,22 @@ nav.affix .ia-ui-menu li {
     width:220px;
     text-align:right;
   }
-}
-.new-section {
-  margin-top:30px;
+  .body .flspan {
+    display:block;
+    float:left;
+    margin-left:-240px;
+    width:220px;
+    font-style:italic;
+    font-size:14pt;
+  }
+  .body .flspan-alt {
+    display:none;
+  }
 }
 
 .body h3 {
   font: 16pt Kreon,'Times New Roman',times,serif;
 }
-
 .body p {
   margin:0px 0px 10px 0px;
   font: 13pt 'PT Sans',verdana,sans-serif;
@@ -212,6 +261,17 @@ nav.affix .ia-ui-menu li {
   margin:0px 0px 4px 0px;
   font: 13pt 'PT Sans',verdana,sans-serif;
 }
+
+.no-bullets li {
+  list-style-type:none;
+}
+.no-bullets li i {
+  float:left;
+  margin-left:-35px;
+  margin-top:10px;
+  font-size:16pt;
+}
+/* Black callouts */
 .body .callout {
   background:black;
   color:white;
@@ -222,18 +282,13 @@ nav.affix .ia-ui-menu li {
   background-color:transparent;
   color:#FA89AD;
 }
-.body .callout .form-control {
+.body .callout .form-control, .coeffect-playground .form-control {
   color:#f0f0f0;
   background:#202020;
   border-color:#606060;
 }
-/*
-.body strong {
-  float:right;
-  width:250px;
-  margin:0px -200px 0px 0px;
-}
-*/
+
+/* Interactive document styling */
 .body .ia-ui-bar-left {
   border-left:10px solid white;
   padding-left:15px;
@@ -246,7 +301,6 @@ nav.affix .ia-ui-menu li {
   margin-right:-25px;
   cursor:pointer;
 }
-
 .body .ia-ui-circle { 
   width:30px;
   text-align:left;
@@ -292,10 +346,27 @@ nav.affix .ia-ui-menu li {
   text-decoration:none;
 }
 
-/* .... */
+/* ------------------------------------------------------------------------------------ *\
 
-.btn { background:black; color:white; }
-.btn:focus, .btn.hover, .btn:hover { background:#404040 !important; color:white !important; }
+   ######
+   #     # #        ##   #   #  ####  #####   ####  #    # #    # #####
+   #     # #       #  #   # #  #    # #    # #    # #    # ##   # #    #
+   ######  #      #    #   #   #      #    # #    # #    # # #  # #    #
+   #       #      ######   #   #  ### #####  #    # #    # #  # # #    #
+   #       #      #    #   #   #    # #   #  #    # #    # #   ## #    #
+   #       ###### #    #   #    ####  #    #  ####   ####  #    # #####   
+
+\* ------------------------------------------------------------------------------------ */
+
+.btn { 
+  background:black; 
+  color:white; 
+}
+
+.btn:focus, .btn.hover, .btn:hover { 
+  background:#404040 !important;
+  color:white !important; 
+}
 
 .coeffect-playground button i {
   margin-right:10px;
@@ -336,6 +407,53 @@ nav.affix .ia-ui-menu li {
   width:92%;
 }
 
+/* Playground with live chart */
+.coeffect-playground .live-chart {
+  margin:0px 4% 0px 4%;
+  width:92%;
+}
+.canvas-wrapper { 
+  border:1px solid #606060;
+  border-radius:5px;   
+  margin-top:10px;
+  padding:2px;
+}
+.drawing-space {
+  border:1px solid #606060;
+  border-radius:5px;
+  height:200px;
+  background:#202020;
+  position:relative;
+}
+.drawing-space span {
+  color:#383838;
+  font-size:12pt;
+  position:absolute;
+  right:10px;
+  bottom:10px;
+  text-align:right;
+  font-weight:bold;
+}
+.drawing-space span i {
+  float:left;
+  font-size:26pt;
+  margin-right:10px;
+  margin-top:5px;  
+}
+
+/* ------------------------------------------------------------------------------------ *\
+
+    #####
+   #     # #####  ######  ####  #   ##   #
+   #       #    # #      #    # #  #  #  #
+    #####  #    # #####  #      # #    # #
+         # #####  #      #      # ###### #
+   #     # #      #      #    # # #    # #
+    #####  #      ######  ####  # #    # ######   
+   
+\* ------------------------------------------------------------------------------------ */
+
+/* Box with information about how playgrounds work on homepage */
 #playground-callout i {
   float:left;
   font-size:200%;
@@ -346,7 +464,18 @@ nav.affix .ia-ui-menu li {
   #playground-callout i { margin-top:10px; }
 }
 
-/* Interactive document stuff */
+/* ------------------------------------------------------------------------------------ *\
+
+    ###
+     #  #    # ##### ###### #####    ##    ####  ##### # #    # ######
+     #  ##   #   #   #      #    #  #  #  #    #   #   # #    # #
+     #  # #  #   #   #####  #    # #    # #        #   # #    # #####
+     #  #  # #   #   #      #####  ###### #        #   # #    # #
+     #  #   ##   #   #      #   #  #    # #    #   #   #  #  #  #
+    ### #    #   #   ###### #    # #    #  ####    #   #   ##   ######
+    
+\* ------------------------------------------------------------------------------------ */
+
 .ia {
   overflow:hidden;
   transition:all 0.7s;
@@ -371,7 +500,6 @@ nav.affix .ia-ui-menu li {
 .ia-slides .slide {
   display:none;
 }
-
 .ia-slides .slide p {
   font: 13pt 'PT Sans',verdana,sans-serif;
 }
@@ -410,7 +538,17 @@ nav.affix .ia-ui-menu li {
   margin:0px 60px 0px 60px;
 }
 
-/**************** Formatted F# code snippets ****************/
+/* ------------------------------------------------------------------------------------ *\
+
+     #####
+    #     #  ####  #####  ######     ####  #    # # #####  #####  ###### #####  ####
+    #       #    # #    # #         #      ##   # # #    # #    # #        #   #
+    #       #    # #    # #####      ####  # #  # # #    # #    # #####    #    ####
+    #       #    # #    # #              # #  # # # #####  #####  #        #        #
+    #     # #    # #    # #         #    # #   ## # #      #      #        #   #    #
+     #####   ####  #####  ######     ####  #    # # #      #      ######   #    ####
+     
+\* ------------------------------------------------------------------------------------ */
 
 /* identifier */
 span.i { color:#000000; }
@@ -462,7 +600,6 @@ div.tip {
 	display:none;
   color:#000000;
 }
-
 table.pre {
   width:100%;
 }

@@ -91,12 +91,13 @@ module Html =
   /// Simple pretty printer - for Text, we append strings to array to
   /// make running it in JavaScript a bit faster (one would hope)
   type Printer = 
-    | Text of (string[] -> unit)
+    | Text of (string[] -> int)
     | Append of Printer * Printer
     | Wrap of Printer
     | Newline 
 
-  let text s = Text(fun sb -> sb.push(s))
+  let text s = Text(fun sb -> sb.push(s); s.Length)
+  let html s = Text(fun sb -> sb.push(s); 0)
   let (++) p1 p2 = Append(p1, p2)
   let wrap p = Wrap(p)
   let newline = Newline
@@ -115,18 +116,18 @@ module Html =
       | Printer.Newline -> true
       | Printer.Append(p1, p2) -> multiline p1 || multiline p2
       | _ -> false
-    let rec loop indent p = 
+    let rec loop col indent p = 
       match p with 
-      | Printer.Text f -> f sb
-      | Printer.Append(p1, p2) -> loop indent p1; loop indent p2
-      | Printer.Newline -> sb.push("\n" + indent)
+      | Printer.Text f -> col + (f sb)
+      | Printer.Append(p1, p2) -> loop (loop col indent p1) indent p2
+      | Printer.Newline -> sb.push("\n" + indent); indent.Length
       | Printer.Wrap(p) -> 
-          if multiline p then
+          if multiline p || col > 40 then
             sb.push("\n  " + indent)
-            loop ("  " + indent) p
-          else loop indent p    
+            loop (indent.Length + 2) ("  " + indent) p
+          else loop col indent p    
 
-    loop "" p
+    loop 0 "" p |> ignore
     sb.join("")
 
   /// Format <span "attrs"> "body" </span>
@@ -140,7 +141,8 @@ module Html =
       sb.push("'")
     sb.push(">")
     sb.push(body)
-    sb.push("</span>"))
+    sb.push("</span>")
+    body.Length)
 
   /// Build printer for a pattern
   let rec printPat kind (TypedPat((_, _, t), pat)) = 
@@ -199,10 +201,11 @@ module Html =
     | Type.Variable s -> sb.push(s)
     | Type.Tuple(ts) ->
         sb.push("(")
-        printTyp kind (List.head ts) sb |> ignore
-        for t in List.tail ts do
-          sb.push(" * ")
-          printTyp kind t sb |> ignore
+        if not (List.isEmpty ts) then
+          printTyp kind (List.head ts) sb |> ignore
+          for t in List.tail ts do
+            sb.push(" * ")
+            printTyp kind t sb |> ignore
         sb.push(")")
         
     | Type.Func((cf, cs), t1, t2) -> 
@@ -228,10 +231,11 @@ module Html =
 
   let withId prefix path p = 
     let id = "-p-" + String.concat "-" (List.rev (List.map string path))
-    text ("<span class='p-span' id='" + prefix + id + "'>") ++ p ++ text "</span>"
+    html ("<span class='p-span' id='" + prefix + id + "'>") ++ p ++ html "</span>"
 
   let sep items sep = 
-    List.fold (fun st it -> st ++ sep ++ it) (List.head items) (List.tail items)
+    if List.isEmpty items then text ""
+    else List.fold (fun st it -> st ++ sep ++ it) (List.head items) (List.tail items)
 
   /// Print coeffect language expression
   let rec printExpr kind prefix prec path (Typed.Typed((_, coeff, typ), expr)) =

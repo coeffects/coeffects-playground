@@ -42,6 +42,9 @@ let jthis() : JQuery = failwith "!"
 [<JSEmitInline("$({0})")>]
 let jq s : JQuery = failwith "!"
 
+[<JSEmitInline("setLiveChartFunction({0},{1},{2},{3})")>]
+let setLiveChartFunction (prefix:string) (xl:int) (yl:int) (f:float[] -> float[] -> float) = failwith "!"
+
 let replacer = 
   ExpressionReplacer.createUnsafe 
     <@ fun (c:char[]) -> new System.String(c) @> <@ fun c -> newString c @>
@@ -75,11 +78,100 @@ module Client =
   let click (f:unit -> unit) (j:JQuery) = j.click(fun _ -> f(); obj())
   let cls (s:string) (j:JQuery) = j.addClass(s)
 
-  let setupPlayground prefix kind tyinfo transle = 
+  let inputTable prefix pl groups = 
+    let fg = el "table" [] [] |> appendTo pl
+    let inputs = 
+      groups |> List.map (List.mapi (fun i name ->
+        let input = el "input" [ ("type","text"); ("placeholder", "0"); ("class","form-control" + (if i = 0 then " start" else "")) ] []
+        let label = el "td" [] [] |> html ("<code>" + name + "</code> =") |> cls "label"
+        el "tr" [] [ label; el "td" [] [input] ] |> appendTo fg |> ignore
+        input ))
+    let result =
+      let input = el "input" [ ("type","text"); ("disabled", "disabled"); ("placeholder", "0"); ("class","form-control") ] []
+      let label = el "td" [] [] |> html ("<code>result</code> =") |> cls "label"
+      el "tr" [] [ label; el "td" [] [input] ] |> cls "result" |> appendTo fg |> ignore
+      input
+
+    let noUi, ui = jq("#" + prefix + "-playground-no-ui"), jq("#" + prefix + "-playground-ui")
+    if List.forall List.isEmpty inputs then ignore(noUi.show()); ignore(ui.hide()); 
+    else ignore(ui.show()); ignore(noUi.hide())
+    inputs, result
+
+  let rec formatResult res =
+    match res with 
+    | Value.Number n -> string n
+    | Value.Function _ -> "<function>"
+    | Value.Tuple vs -> "(" + String.concat ", " (List.map formatResult vs) + ")"
+    | Value.Unit _ -> "()"
+    | Value.ListComonad _ | Value.ImplicitsComonad _ -> "<comonad>"
+
+  let tryMap f xs =
+    let rec loop acc xs =
+      match xs with 
+      | [] -> Some(List.rev acc)
+      | x::xs ->
+          match f x with
+          | None -> None
+          | Some v -> loop (v::acc) xs
+    loop [] xs
+
+  let setupLiveChart prefix kind mode (Typed(tyinfo, typed)) transle =
+    let noUi, ui = jq("#" + prefix + "-livechart-no-ui"), jq("#" + prefix + "-livechart-ui")        
+    match kind, tyinfo with
+    | CoeffectKind.PastValues, (_, _, Type.Funcs([(_, Coeffect.Past xl), _; (_, Coeffect.Past yl), _], _)) ->
+        let evaluate xs ys = 
+          let args = 
+            [ Value.Tuple [Value.ListComonad (xs |> List.ofArray |> List.map Value.Number)]
+              Value.Tuple [Value.ListComonad (ys |> List.ofArray |> List.map Value.Number)] ]
+          let sinput = Value.Tuple []
+          let res = 
+            match eval { Kind = kind; Variables = Map.ofSeq ["sinput", sinput]; Mode = mode } transle with
+            | Value.Functions f -> f args
+            | _ -> failwith "Expected function"
+          match res with Value.Number n -> n | _ -> failwith "Not a number"
+        setLiveChartFunction prefix (1+xl) (1+yl) evaluate
+        ignore(ui.show()); ignore(noUi.hide())
+    | _ -> 
+        ignore(noUi.show()); ignore(ui.hide()); 
+
+  let setupPlayground prefix kind mode (Typed(tyinfo, typed)) transle = 
     let playground = Globals.document.getElementById(prefix + "-playground") :?> HTMLPreElement
     playground.innerHTML <- "";
     match kind, tyinfo with
-    | CoeffectKind.PastValues, (_, Coeffect.Past m, Type.Func((Coeffect.Past n, _), _, _)) ->
+    | CoeffectKind.PastValues, (_, _, f) ->
+        let inputs = match f with Type.Funcs(inputs, _) -> inputs | _ -> []
+        let names = 
+          match typed with   
+          | Expr.Let(TypedPat(_, Pattern.Var s1), Typed(_, Expr.Funs(inputs, _)), Typed(_, Expr.Var s2)) when s1 = s2 ->
+              inputs |> tryMap (function TypedPat(_, Pattern.Var n) -> Some n | _ -> None)
+          | Expr.Funs(inputs, _) -> 
+              inputs |> tryMap (function TypedPat(_, Pattern.Var n) -> Some n | _ -> None)
+          | _ -> None
+        let names = defaultArg names (List.mapi (fun i _ -> "var" + string i) inputs)
+        let inputs = List.map2 (fun n coeff -> 
+          match coeff with 
+          | ((_, Coeffect.Past k), _) -> [ for i in 0 .. k -> n + "[" + string i + "]" ]
+          | _ -> failwith "expected past") names inputs
+        let pl = jq(playground)
+        let inputs, result = inputTable prefix pl inputs
+
+        let evaluate () = 
+          let sinput = Value.Tuple []
+          let res = 
+            match eval { Kind = kind; Variables = Map.ofSeq ["sinput", sinput]; Mode = mode } transle with
+            | Value.Functions f -> 
+                let args = 
+                  [ for g in inputs -> Value.Tuple [Value.ListComonad [ for i in g -> Value.Number(1.0 * unbox(i._val())) ]] ]
+                f args
+            | res -> res
+          result._val(formatResult res) |> ignore
+
+        for g in inputs do 
+          for i in g do i.on("change", fun _ _ -> 
+            evaluate(); null).on("keyup", fun _ _ -> evaluate(); null) |> ignore
+        evaluate()
+
+    (*
         let pl = jq(playground)
         let pastValues = [ for i in 0 .. n -> i, el "input" [("type","text"); ("class","form-control")] [] |> css ["width","50px"] ]
         el "form" [("class","form-inline")] [
@@ -97,51 +189,34 @@ module Client =
           let input = Value.ListComonad [ for _ in 0 .. m -> Value.Unit ]
           let arg = Value.ListComonad [ for _, i in pastValues -> Value.Number(1.0 * unbox(i._val())) ]
           let res = 
-            let (Value.Function f | Fail "Expected function!" f) = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle // Flat input!
+            let (Value.Function f | Fail "Expected function!" f) = eval { Kind = kind; Variables = Map.ofSeq ["finput", input] } transle // Flat input!
             f arg
           match res with 
           | Value.Number n -> Globals.window.alert(string n)
           | _ -> Globals.window.alert("Something weird") )
         |> appendTo pl |> ignore
+        *)
+        ()
 
     | CoeffectKind.ImplicitParams, (_, c, _) ->
         let coeffs = Solver.ImplicitParams.evalCoeffect Map.empty c |> Set.toList
         let pl = jq(playground)
-        let fg = el "table" [] [] |> appendTo pl
-        let inputs = 
-          [ for c in coeffs -> 
-              let input = el "input" [ ("type","text"); ("placeholder", "0"); ("class","form-control") ] []
-              let label = el "td" [] [] |> html ("<code>?" + c + "</code> =") |> cls "label"
-              el "tr" [] [ label; el "td" [] [input] ] |> appendTo fg |> ignore
-              c, input ]
-
-        let result =
-          let input = el "input" [ ("type","text"); ("disabled", "disabled"); ("placeholder", "0"); ("class","form-control") ] []
-          let label = el "td" [] [] |> html ("<code>result</code> =") |> cls "label"
-          el "tr" [] [ label; el "td" [] [input] ] |> cls "result" |> appendTo fg |> ignore
-          input
-              
+        let inputs, result = inputTable prefix pl [[ for c in coeffs -> "?" + c ]]
+        let inputs = List.head inputs
+         
         let evaluate () = 
-          let input = Value.ImplicitsComonad(Value.Unit, Map.ofList [ for c, i in inputs -> c, Value.Number(1.0 * unbox(i._val())) ])
-          let res = eval { Kind = kind; Variables = Map.ofSeq ["input", input] } transle // Flat input
-          match res with 
-          | Value.Number n -> result._val(string n) |> ignore
-          | Value.Function _ -> result._val("<function>") |> ignore
-          | Value.Tuple _ -> result._val("<tuple>") |> ignore
-          | Value.Unit _ -> result._val("()") |> ignore
-          | Value.ListComonad _ | Value.ImplicitsComonad _ -> result._val("<comonad>") |> ignore
+          let input = Value.ImplicitsComonad(Value.Unit, Map.ofList [ for c, i in List.zip coeffs inputs -> c, Value.Number(1.0 * unbox(i._val())) ])
+          let res = eval { Kind = kind; Variables = Map.ofSeq ["finput", input]; Mode = mode } transle // Flat input
+          result._val(formatResult res) |> ignore
 
-        let noUi, ui = jq("#" + prefix + "-playground-no-ui"), jq("#" + prefix + "-playground-ui")
-        if List.isEmpty inputs then ignore(noUi.show()); ignore(ui.hide()); 
-        else ignore(ui.show()); ignore(noUi.hide())        
-
-        for _, i in inputs do i.on("change", fun _ _ -> evaluate(); null).on("keyup", fun _ _ -> evaluate(); null) |> ignore
+        for i in inputs do 
+          i.on("change", fun _ _ -> evaluate(); null).on("keyup", fun _ _ -> evaluate(); null) |> ignore
         evaluate()
 
-        el "button" [ ("class", "btn btn-success") ] [] 
-        |> html "<i class='fa fa-play'></i>Run snippet"
-        |> click evaluate
-        |> appendTo pl |> ignore
+        //el "button" [ ("class", "btn btn-success") ] [] 
+        //|> html "<i class='fa fa-play'></i>Run snippet"
+        //|> click evaluate
+        //|> appendTo pl |> ignore
     | _ -> ()
 
 // ------------------------------------------------------------------------------------------------
@@ -289,7 +364,7 @@ module Client =
     | _ -> Errors.parseError "Unexpected token. You might be trying to use some unsupported operator or keyword."
 
   let reload kind mode prefix value = 
-//    try
+    try
       let typed = typeCheckSoruce value kind mode 
       if hasFeature prefix "output" then
         setupHtmlOutput prefix "output" kind typed
@@ -301,8 +376,8 @@ module Client =
       |> Option.iter (fun clr -> setupJudgement clr prefix kind typed)
 
       let transle  = 
-        ( if mode = CoeffectMode.Flat then Translation.Flat.translate (Typed((), Expr.Builtin("input", []))) [] typed 
-          else Translation.Structural.translate None [] typed ) 
+        ( if mode = CoeffectMode.Flat then Translation.Flat.translate (Typed((), Expr.Builtin("finput", []))) [] typed 
+          else Translation.Structural.translate (Typed((), Expr.Builtin("sinput", []))) [] typed ) 
         |> Translation.contract
         |> TypeChecker.typeCheck (Translation.builtins (TypeChecker.coeff typed)) (CoeffectKind.Embedded kind) CoeffectMode.None
 
@@ -310,11 +385,13 @@ module Client =
         setupHtmlOutput prefix "transl" kind transle
 
       if hasFeature prefix "playground" then
-        let (Typed(tyinfo, _)) = typed
-        setupPlayground prefix kind tyinfo transle
+        setupPlayground prefix kind mode typed transle
+
+      if hasFeature prefix "livechart" then
+        setupLiveChart prefix kind mode typed transle
       reportError prefix value None
-  //  with e ->
-    //  reportError prefix value (Some(e.ToString()))
+    with e ->
+      reportError prefix value (Some(e.ToString()))
 
   let setup kind mode prefix = 
     let btn = Globals.document.getElementById(prefix + "-btn") :?> HTMLButtonElement

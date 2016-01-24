@@ -2,6 +2,7 @@
 #r "packages/FunScript/lib/net40/FunScript.Interop.dll"
 #r "packages/FunScript.TypeScript.Binding.lib/lib/net40/FunScript.TypeScript.Binding.lib.dll"
 #r "packages/FunScript.TypeScript.Binding.jquery/lib/net40/FunScript.TypeScript.Binding.jquery.dll"
+(*
 #load "parsec.fs"
 #load "ast.fs"
 #load "errors.fs"
@@ -11,6 +12,8 @@
 #load "typechecker.fs"
 #load "pretty.fs"
 #load "translation.fs"
+*)
+#r @"C:\Tomas\Public\tpetricek\Coeffects\bin\Debug\Coeffects.exe"
 
 open System.IO
 open Coeffects
@@ -22,7 +25,14 @@ open Coeffects.Solver
 open Coeffects.Translation
 
 
-let source = "fun x -> fun y -> x"
+let source = """          let smooth x y = 
+            let sum4 v = v + prev (v + prev (v + prev v)) in
+            let prev4 v = prev prev prev prev v in
+            let s1 = sum4 x + sum4 (prev4 x) in
+            let s2 = sum4 (prev4 (prev4 x)) in
+            (s1 + s2) / 12 in
+          smooth
+"""
 let (Parsec.Parser lex) = Lexer.lexer
 let tokens = lex (List.ofArray (source.ToCharArray())) |> Option.get |> snd
 let tokens' = tokens |> List.filter (function Token.White _ -> false | _ -> true)
@@ -30,15 +40,27 @@ let (Parsec.Parser pars) = Parser.expr ()
 let expr = pars tokens' |> Option.get |> snd
 let builtins1, kind, mode = (fun _ _ -> failwith "!"), CoeffectKind.PastValues, CoeffectMode.Structural
 let typed = TypeChecker.typeCheck builtins1 kind mode expr
-    
+
+
 let builtins2, kind2, mode2 = Translation.builtins (TypeChecker.coeff typed), CoeffectKind.Embedded kind, CoeffectMode.None
 
-//Translation.Structural.
-Translation.Structural.translate None [] typed 
-|> Translation.contract
-|> TypeChecker.typeCheck builtins2 kind2 mode2
+let transl = 
+  Translation.Structural.translate (Typed((), Expr.Builtin("sinput", []))) [] typed 
+  |> Translation.contract
+  |> TypeChecker.typeCheck builtins2 kind2 mode2
 
+open Coeffects.Evaluation
 
+let args = 
+  [ Value.Tuple [ Value.ListComonad [ Value.Number(1000.0) ]]
+    Value.Tuple [ Value.ListComonad [ Value.Number(1.0); Value.Number(2.0) ]] ]
+let sinput = Value.Tuple []
+
+match eval { Kind = kind; Mode = mode; Variables = Map.ofSeq ["sinput", sinput] } transl with
+| Value.Functions f -> f args
+| _ -> failwith "Expected function"
+
+(*
 let typ (Typed((_, t), _)) = t
 
 let rec check ctx (Typed((), e)) : Typed<CoeffVars * Type> * ResultContext = 
@@ -210,4 +232,4 @@ h 0     """.Trim()
 
   TypeChecker.typeCheck CoeffectKind.ImplicitParams translated
   ()
-*)
+*)*)
