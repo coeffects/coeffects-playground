@@ -230,8 +230,10 @@ module Client =
   let queueAction(f:unit -> unit) : unit = failwith "!"
 
   let setupTypeDerivation clr prefix kind typed =
-    let typetree = Globals.document.getElementById(prefix + "-typetree") :?> HTMLPreElement
-    let typetreeTemp = Globals.document.getElementById(prefix + "-typetree-temp") :?> HTMLPreElement
+    let typetree = jq("#" + prefix + "-typetree")
+    let typetreeTemp = jq("#" + prefix + "-typetree-temp")
+    let navigColor = typetree.data("navigation-color") :?> string
+    let currentColor = typetree.data("current-color") :?> string
 
     let rec findSubExpression locations (Typed.Typed(_, e) as te) : Typed<CoeffVars * Coeffect * Type> = 
       match locations, e with
@@ -249,7 +251,7 @@ module Client =
       let root = locations.Value |> List.isEmpty
       MathJax.derivation kind root e arr |> ignore
       let tex = arr.join("").Replace("{\\color{", "{\\color{" + clr)
-      typetreeTemp.innerHTML <- "\\[" + tex + "\\]"
+      typetreeTemp.html("\\[" + tex + "\\]") |> ignore
       typeSetElement (prefix + "-typetree-temp")
 
       let getNewPath (jo:JQuery) =
@@ -272,8 +274,8 @@ module Client =
         jo.css("backgroundColor", clr) |> ignore
   
       queueAction(fun () ->
-        typetree.innerHTML <- typetreeTemp.innerHTML
-        typetreeTemp.innerHTML <- ""
+        typetree.html(typetreeTemp.html()) |> ignore
+        typetreeTemp.html("") |> ignore
           
         jq("#" + prefix + " .mtable").css("cursor", "pointer") |> ignore
         let currIndex = jq("#" + prefix + " .mtable").length - (if root then 1.0 else 2.0)
@@ -286,7 +288,7 @@ module Client =
             typeset ()
             box () )
           .on("mouseenter", fun e o ->
-            highlight (jthis()) "#c0ffc0" "#ffffc0"
+            highlight (jthis()) navigColor currentColor
             box () )
           .on("mouseleave", fun e o ->
             highlight (jthis()) "transparent" "transparent"
@@ -317,9 +319,9 @@ module Client =
 // Display the formatted HTML in a <pre> tag
 // ------------------------------------------------------------------------------------------------
 
-  let setupHtmlOutput prefix view kind e =
+  let setupHtmlOutput prefix compact view kind e =
     let transl = Globals.document.getElementById(prefix + "-" + view) :?> HTMLPreElement
-    transl.innerHTML <- Html.print (Html.printExpr kind prefix 0 [] e)
+    transl.innerHTML <- Html.print (Html.printExpr compact kind prefix 0 [] e)
     Globals.eval("setupTooltips()") |> ignore
 
   let reportError prefix source msg = 
@@ -365,9 +367,16 @@ module Client =
 
   let reload kind mode prefix value = 
     try
+      if hasFeature prefix "langchooser" then
+        let mode = match mode with CoeffectMode.Flat -> "flat" | _ -> "structural"
+        let kind = match kind with CoeffectKind.ImplicitParams -> "implicit" | _ -> "dataflow"
+        jq("#" + prefix + "-langchooser")._val(mode + "-" + kind) |> ignore
+        
       let typed = typeCheckSoruce value kind mode 
       if hasFeature prefix "output" then
-        setupHtmlOutput prefix "output" kind typed
+        setupHtmlOutput prefix true "output" kind typed
+      if hasFeature prefix "longoutput" then
+        setupHtmlOutput prefix false "longoutput" kind typed
 
       tryGetFeature prefix "typetree" "tex-color-prefix" 
       |> Option.iter (fun clr -> setupTypeDerivation clr prefix kind typed)
@@ -382,7 +391,7 @@ module Client =
         |> TypeChecker.typeCheck (Translation.builtins (TypeChecker.coeff typed)) (CoeffectKind.Embedded kind) CoeffectMode.None
 
       if hasFeature prefix "transl" then
-        setupHtmlOutput prefix "transl" kind transle
+        setupHtmlOutput prefix true "transl" kind transle
 
       if hasFeature prefix "playground" then
         setupPlayground prefix kind mode typed transle
@@ -392,11 +401,6 @@ module Client =
       reportError prefix value None
     with e ->
       reportError prefix value (Some(e.ToString()))
-
-  let setup kind mode prefix = 
-    let btn = Globals.document.getElementById(prefix + "-btn") :?> HTMLButtonElement
-    let input = Globals.document.getElementById(prefix + "-input") :?> HTMLTextAreaElement
-    btn.addEventListener_click(fun _ -> reload kind mode prefix input.value; null)
 
   let main () =
     let counter = ref 0
@@ -417,7 +421,7 @@ module Client =
         let ed = unbox<string> (je.data("coeff-editor"))
         if ed <> null then ed
         else findEditor (je.parent())
-
+      
       if lang.Contains("autoload") then
         let prefix = findEditor (jthis())
         reload kind mode prefix source
@@ -432,24 +436,33 @@ module Client =
 
       let typed = typeCheckSoruce source kind mode 
       let prefix = "fmtpre" + (string counter.Value)
-      jthis().html(Html.print (Html.printExpr kind prefix 0 [] typed)) |> ignore
+      jthis().html(Html.print (Html.printExpr true kind prefix 0 [] typed)) |> ignore
       null
     ) |> ignore
 
     jq(".coeff-demo").each(fun _ _ ->
-      let kind = 
-        match jthis().data("coeff-kind") :?> string with
-        | "implicit" -> CoeffectKind.ImplicitParams
-        | "dataflow" -> CoeffectKind.PastValues  
-        | _ -> failwith "Unexpected kind"
-      let mode = 
-        match jthis().data("coeff-mode") :?> string with
-        | "flat" -> CoeffectMode.Flat
-        | "structural" -> CoeffectMode.Structural
-        | _ -> failwith "Unexpected mode"
-      let id = jthis().attr("id")
+      let prefix = jthis().attr("id")
+      let kindMode = jthis().data("coeff-kind") :?> string, jthis().data("coeff-mode") :?> string 
+      let reloadHandler value =
+        // Get kind and mode - either from langchooser <select> or from data attribute
+        let kindStr, modeStr =
+          if hasFeature prefix "langchooser" then
+            let kindMode = jq("#" + prefix + "-langchooser")._val() :?> string
+            kindMode, kindMode
+          else kindMode
+        let kind = 
+          if kindStr.Contains "implicit" then CoeffectKind.ImplicitParams
+          elif kindStr.Contains "dataflow" then CoeffectKind.PastValues  
+          else failwith "Unexpected kind"
+        let mode = 
+          if modeStr.Contains "flat" then CoeffectMode.Flat
+          elif modeStr.Contains "structural" then CoeffectMode.Structural
+          else failwith "Unexpected mode"
+        reload kind mode prefix value
 
-      setup kind mode id
+      let btn = Globals.document.getElementById(prefix + "-btn") :?> HTMLButtonElement
+      let input = Globals.document.getElementById(prefix + "-input") :?> HTMLTextAreaElement
+      btn.addEventListener_click(fun _ -> reloadHandler input.value; null)
       obj() ) |> ignore
     Globals.eval("setupTooltips()") |> ignore
 

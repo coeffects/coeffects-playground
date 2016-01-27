@@ -278,13 +278,13 @@ nav.affix .ia-ui-menu li {
   padding:20px;
   margin:20px;
 }
-.body .callout code {
+.body .callout code, .outline code {
   background-color:transparent;
   color:#FA89AD;
 }
 .body .callout .form-control, .coeffect-playground .form-control {
   color:#f0f0f0;
-  background:#202020;
+  background:#282828;
   border-color:#606060;
 }
 
@@ -390,7 +390,7 @@ nav.affix .ia-ui-menu li {
   text-align:center;
   float:right;
   border-color:#808080;
-  background:#202020;
+  background:#282828;
   min-width:150px;
   margin:0px 4% 10px 0px;
 }
@@ -422,7 +422,7 @@ nav.affix .ia-ui-menu li {
   border:1px solid #606060;
   border-radius:5px;
   height:200px;
-  background:#202020;
+  background:#282828;
   position:relative;
 }
 .drawing-space span {
@@ -628,3 +628,16 @@ pre.fssnip code {
 pre, code {
   font:13pt 'Inconsolata',consolas,monospace;
 }
+
+.callout pre, .outline pre {
+  color:#f0f0f0;
+  background:#181818;
+  border-color:#606060;
+}
+.callout pre span.k, .outline pre span.k { color:#7FA5FF; }
+.callout pre span.i, .outline pre span.i { color:#F0F0F0; }
+.callout pre span.n, .outline pre span.n { color:#4ECE58; }
+.callout pre span.op, .outline pre span.op { color:#BEBADA; }
+
+
+

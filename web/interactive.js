@@ -106,6 +106,7 @@ function toggleElement(el, visible) {
     el.css("transform", "translate(0px, 0px) scaleY(1.0) scaleX(1.0)");  
     el.css("max-height", ((h==null||h<50) ? 1000 : h) + "px");
     el.css("opacity", "1.0");
+    setTimeout(function() { el.css("max-height", "10000px"); }, 200);
   } else {
     el.data("last-height", el.height());
     el.css("transform", "translate(0px, -50%) scaleY(0.0) scaleX(0.5)");        

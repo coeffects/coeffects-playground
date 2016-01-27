@@ -1009,7 +1009,7 @@
 
 <div class="body container">
   <div class="row">
-    <div class="col-sm-2"></div>
+    <div class="col-sm-3"></div>
     <div class="col-sm-8 lside">
     <h2>
       <span>Coeffect type system</span><br class="hidden-sm hidden-xs hidden-md" />
@@ -1062,7 +1062,7 @@
   </div>
 
   <div class="row">
-    <div class="col-sm-2"></div>
+    <div class="col-sm-3"></div>
     <div class="col-sm-8">
       <div class="ia-slides" id="lambda-slides">
       >>>>
@@ -1131,7 +1131,7 @@
     </div>
   </div>
   <div class="row">
-    <div class="col-sm-2"></div>
+    <div class="col-sm-3"></div>
     <div class="col-sm-8 ia-choice ia-ui-bar-right ia-ui-morelink" data-ia-undoable="true" data-ia-key="theory-all" 
       data-ia-ui-kind="light" data-ia-ui-prop="border-color" data-ia-show="theory-all" data-ia-hide="">    
       >>>>      
@@ -1250,56 +1250,159 @@
   </div>
 </div>
 
-<div class="outline new-section ia-slides" style="margin:30px 0px 0px 0px;overflow-x:hidden;" id="typing-slides">
+<div class="outline new-section" style="margin:30px 0px 0px 0px;overflow-x:hidden;" id="typing-slides">
 <div class="container">
 
   <div class="row coeffect-playground">
     <div class="col-md-1"></div>
-    <div class="col-md-10">
-      
-      <div>
-      <div class="slide coeff-demo" data-coeff-mode="flat" data-coeff-kind="implicit" id="ximpl1">
-        <h2>Flat implicit parameters</h2>
+    <div class="col-md-10">      
+      <div class="coeff-demo" id="tps">
+        <h2>Interactive coeffect type checker</h2>
         
-        <textarea class="form-control" id="ximpl1-input" style="font-family:inconsolata; height:150px">
+        <p style="margin-top:10px">Choose a coeffect language from the dropdown and load
+          a sample snippet to get started.</p>        
+        <div style="padding-top:5px">      
+        <script>
+          var samples = 
+            { 'flat-implicit': "let dyn snd = ?fst + snd in\nlet ?fst = 10 in\ndyn ?other",
+              'flat-dataflow': "fun x y ->\n  let avg2 = fun y -> (y + prev y) / 2 in\n  avg2 x + prev (avg2 y)",
+              'structural-dataflow': "fun x y ->\n  let avg2 = fun y -> (y + prev y) / 2 in\n  avg2 x + prev (avg2 y)" };              
+        </script>
+        <button class="btn btn-success" style="width:20%;margin-bottom:0px;"
+          onclick="$('#tps-input').val(samples[$('#tps-langchooser').val()])"><i class="fa fa-folder-open-o"></i>Open sample</button>
+        <select class="form-control" id="tps-langchooser" style="width:71%; margin:0px 0px 0px 4%">
+          <option value="flat-implicit">Implicit parameters (flat)</option>
+          <option value="flat-dataflow">Dataflow langauge (flat)</option>
+          <option value="structural-dataflow">Dataflow langauge (structural)</option>
+        </select>        
+        <textarea class="form-control" id="tps-input" style="font-family:inconsolata;margin-top:5px;height:150px">
 let dyn snd = ?fst + snd in
 let ?fst = 10 in
 dyn ?other</textarea>
-        <button class="btn btn-success" id="ximpl1-btn"><i class="fa fa-check"></i>Check snippet</button>
+        </div>
+        <button class="btn btn-success"  style="width:20%;" id="tps-btn"><i class="fa fa-check"></i>Check snippet</button>
+        <script>$(function() { $("#tps-btn").trigger("click"); });</script>
+
+        <p style="clear:both;padding-top:30px;margin:0px 0px 25px 0px">In the formatted code below, 
+          you can see types of variables in a tooltip. Curried functions with multiple parameters 
+          and function defined using <code>let</code> are expanded.</p>          
         
-        <div style="min-height:160px;margin:80px -3000px 20px -3000px;clear:both;">
-        <p id="ximpl1-typetree" data-tex-color-prefix="l"></p>
-        <p id="ximpl1-typetree-temp" style="display:none"></p>
+        <pre id="tps-longoutput" style="margin:20px 4% 0px 4%"></pre>
+        
+        <p style="clear:both;padding-top:30px;margin:0px 0px 25px 0px">Now explore the typing derivation. 
+          Click on the judgements in the assumptions to navigate through the typing derivation.
+          Compare flat and structural dataflow typing for the same program!</p>          
+        
+        <div style="margin:30px -3000px 0px -3000px;clear:both;">
+        <p id="tps-typetree" data-current-color="#2B323A" data-navigation-color="#3D2A3F" data-tex-color-prefix="l"></p>
+        <p id="tps-typetree-temp" style="display:none"></p>
         </div>
 
-        <pre id="ximpl1-output">(Output goes here...)</pre>
-      </div>
-        
-      <div class="slide coeff-demo" data-coeff-mode="structural" data-coeff-kind="dataflow" id="xdf2">
-            <textarea class="form-control" id="xdf2-input" style="font-family:inconsolata; height:150px"></textarea>
-            <button class="btn btn-success" id="xdf2-btn">Do stuff</button>
-            <pre id="xdf2-output">(Output goes here...)</pre>
-            
-            <p id="xdf2-typetree"></p>
-            <p id="xdf2-typetree-temp" style="display:none"></p>
-      </div>
-      
-      <div class="slide coeff-demo" data-coeff-mode="flat" data-coeff-kind="dataflow" id="xdf1">
-            <textarea class="form-control" id="xdf1-input" style="font-family:inconsolata; height:150px"></textarea>
-            <button class="btn btn-success" id="xdf1-btn">Do stuff</button>        
-            <pre id="xdf1-output">(Output goes here...)</pre>        
-            <p id="xdf1-typetree"></p>
-            <p id="xdf1-typetree-temp" style="display:none"></p>
-      </div>
-      </div>
-      
+      </div>      
     </div>
     <div class="col-md-1"></div>
   </div>
 </div>
 </div>
+
+<div class="body container" data-coeff-editor="trsl">
+  <div class="row">
+    <div class="col-sm-3"></div>
+    <div class="col-sm-8 lside">
+    <h2>
+      <span>Comonadic translation</span><br class="hidden-sm hidden-xs hidden-md" />
+      <span class="ia-choice ia-ui-circle" data-ia-undoable="true" data-ia-key="theory-lambda" data-ia-ui-kind="light" data-ia-show="theory-lambda" data-ia-hide=""
+        title="Click here to see more details &#10;about the lambda abstraction rule." style="padding-left:5px;">
+        <i class="fa fa-mortar-board"></i>
+      </span>
+      <span class="ia-choice ia-ui-circle" data-ia-undoable="true" data-ia-key="theory-all" data-ia-ui-kind="light" data-ia-show="theory-all" data-ia-hide=""
+        title="Click here to see more details &#10;about the theory of coeffects.">
+        <i class="fa fa-asterisk"></i>
+      </span>
+    </h2>      
+    >>>>  
+    
+    Comonads
+    
+
+    <div class="ia-choice ia-ui-bar-right ia-ui-morelink" data-ia-undoable="true" data-ia-key="theory-lambda" 
+      data-ia-ui-kind="light" data-ia-ui-prop="border-color" data-ia-show="theory-lambda" data-ia-hide="">
+    nada
+    </div>
+    <<<<
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-5">
+    >>>>
+
+        [lang=coeffects-flat-impl]
+        ?foo
+
+    another
+    
+        [lang=coeffects-flat-df]
+        fun x -> prev x
+    
+    <<<<
+    </div>
+    <div class="col-md-7">
+      <div class="callout coeffect-playground">
+          <div class="coeff-demo" id="trsl">
+            <p style="margin-top:10px">Choose a coeffect language from the dropdown and load
+              a sample snippet to get started.</p>        
+            <div style="padding-top:5px">      
+            <select class="form-control" id="trsl-langchooser" style="width:71%; margin:0px 0px 0px 4%">
+              <option value="flat-implicit">Implicit parameters (flat)</option>
+              <option value="flat-dataflow">Dataflow langauge (flat)</option>
+              <option value="structural-dataflow">Dataflow langauge (structural)</option>
+            </select>        
+            <textarea class="form-control" id="trsl-input" style="font-family:inconsolata;margin-top:5px;height:150px">
+    let dyn snd = ?fst + snd in
+    let ?fst = 10 in
+    dyn ?other</textarea>
+            </div>
+            <button class="btn btn-success"  style="width:20%;" id="trsl-btn"><i class="fa fa-check"></i>Check snippet</button>
+            <script>$(function() { $("#trsl-btn").trigger("click"); });</script>
+    
+            <p style="clear:both;padding-top:30px;margin:0px 0px 25px 0px">In the formatted code below, 
+              you can see types of variables in a tooltip. Curried functions with multiple parameters 
+              and function defined using <code>let</code> are expanded.</p>          
+            
+            <pre id="trsl-longoutput" style="margin:20px 4% 0px 4%"></pre>
+            <pre id="trsl-transl" style="margin:20px 4% 0px 4%"></pre>
+            
+            <p style="clear:both;padding-top:30px;margin:0px 0px 25px 0px">Now explore the typing derivation. 
+              Click on the judgements in the assumptions to navigate through the typing derivation.
+              Compare flat and structural dataflow typing for the same program!</p>          
+            
+          </div>      
+        </div>
+      
+    </div>
+  </div>
+</div>  
+
+  
   
   <div style="min-height:300px"></div>
+
+<div class="below-nav outline">
+  <div class="container">
+  <div class="col-sm-7">
   
+  >>>>
+  
+  Thanks for reading!
+  
+  <<<<
+  
+  </div>  
+  <div class="col-sm-5">
+    
+    moar stuff
+    
+  </div>  
+</div>  
 </body>
 </html>

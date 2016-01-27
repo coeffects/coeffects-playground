@@ -238,7 +238,7 @@ module Html =
     else List.fold (fun st it -> st ++ sep ++ it) (List.head items) (List.tail items)
 
   /// Print coeffect language expression
-  let rec printExpr kind prefix prec path (Typed.Typed((_, coeff, typ), expr)) =
+  let rec printExpr compact kind prefix prec path (Typed.Typed((_, coeff, typ), expr)) =
 
     // Wrap in parentheses if this expression has lower precedence
     let thisPrec, (lPrec, rPrec) = precedence expr 
@@ -252,28 +252,37 @@ module Html =
       | Expr.Builtin(s, _) -> span ["title", inl (printTyp kind typ); "class","op"] s 
       | Expr.QVar(s) -> span ["title", inl (printTyp kind typ); "class","i"] ("?" + s)
       | Expr.Number(n) -> span ["class","n"] (string n)
-      | Expr.Prev(e) -> span ["class","k"] "prev" ++ text " " ++ printExpr kind prefix thisPrec (0::path) e
+      | Expr.Prev(e) -> span ["class","k"] "prev" ++ text " " ++ printExpr compact kind prefix thisPrec (0::path) e
+
+      | Expr.Fun(pat, body) when not compact ->
+          span ["class","k"] "fun" ++ text " " ++ printPat kind pat ++ text " " ++
+            span ["class","k"] "-&gt;" ++ text " " ++
+            wrap (printExpr compact kind prefix thisPrec (0::path) body)
       | Expr.Funs(pats, body) -> 
-          let tin = match typ with Type.Func(_, tin, _) -> tin | _ -> Errors.unexpected "Expected a type <code>Type.Func</code> when pretty printing a function value."
           span ["class","k"] "fun" ++ text " " ++ 
             sep (List.map (printPat kind) pats) (text " ") ++ text " " ++
             span ["class","k"] "-&gt;" ++ text " " ++
-            wrap (printExpr kind prefix thisPrec (0::path) body)
+            wrap (printExpr compact kind prefix thisPrec (0::path) body)
+
+      | Expr.Let(pat, arg, body) when not compact -> 
+          span ["class","k"] "let" ++ text " " ++ printPat kind pat ++ text " " ++
+            span ["class","op"] "=" ++ text " " ++ wrap (printExpr compact kind prefix thisPrec (0::path) arg) ++ text " " ++
+            span ["class", "k"] "in" ++ newline ++ printExpr compact kind prefix thisPrec (1::path) body
       | Expr.Lets(pats, (Typed.Typed((_, coeff, vtyp), _) as arg), body) -> 
           span ["class","k"] "let" ++ text " " ++ sep (List.map (printPat kind) pats) (text " ") ++ text " " ++
-            span ["class","op"] "=" ++ text " " ++ wrap (printExpr kind prefix thisPrec (0::path) arg) ++ text " " ++
-            span ["class", "k"] "in" ++ newline ++ printExpr kind prefix thisPrec (1::path) body
+            span ["class","op"] "=" ++ text " " ++ wrap (printExpr compact kind prefix thisPrec (0::path) arg) ++ text " " ++
+            span ["class", "k"] "in" ++ newline ++ printExpr compact kind prefix thisPrec (1::path) body
 
       | Expr.App(e1, e2) ->
-          printExpr kind prefix lPrec (0::path) e1 ++ text " " ++ 
-            printExpr kind prefix rPrec (1::path) e2
+          printExpr compact kind prefix lPrec (0::path) e1 ++ text " " ++ 
+            printExpr compact kind prefix rPrec (1::path) e2
 
       | Expr.Binary(op, e1, e2) -> 
-          printExpr kind prefix lPrec (0::path) e1 ++ text " " ++ span ["class","op"] op ++ 
-            text " " ++ printExpr kind prefix rPrec (1::path) e2
+          printExpr compact kind prefix lPrec (0::path) e1 ++ text " " ++ span ["class","op"] op ++ 
+            text " " ++ printExpr compact kind prefix rPrec (1::path) e2
 
       | Expr.Tuple(es) ->
-          es |> List.mapi (fun i e -> printExpr kind prefix lPrec (i::path) e)
+          es |> List.mapi (fun i e -> printExpr compact kind prefix lPrec (i::path) e)
              |> List.reduce (fun p1 p2 -> p1 ++ text ", " ++ p2) 
       | Expr.Fun _ -> Errors.unexpected "Failed to format <code>Expr.Fun</code>. This case should be covered by <code>Funs</code>."
       | Expr.Let _ -> Errors.unexpected "Failed to format <code>Expr.Let</code>. This case should be covered by <code>Lets</code>." )
