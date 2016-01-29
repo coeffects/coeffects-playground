@@ -1128,57 +1128,136 @@
       it captures as many available parameters as possible and delays the rest.
       
       </div>
-      <<<<
       </div>
+      
+      There is much more that can be said about the coeffect type system. You can find a
+      detailed and precise description in the [papers on coeffects](#papers). To get a quick
+      idea of how things work, continue reading and expand the section below with more details.
+      You can also scroll down and play with the interactive type checker!
+      <<<<
     </div>
   </div>
-  <div class="row">
-    <div class="col-sm-1 col-md-3"></div>
-    <div class="col-sm-10 col-md-8 ia-choice ia-ui-bar-right ia-ui-morelink" data-ia-undoable="true" data-ia-key="theory-all" 
+  <div class="row new-section">
+    <div class="col-md-7">
+    <div class="ia-slides" style="margin:0px" id="slides-typing">
+      >>>>
+      <div class="slide">
+      
+      ### Flat coeffect system
+      
+      In the general version, coeffects are combined using the operations of the coeffect algebra.
+      ${\color{lcoeff} \sf \text{use}}$ represents the coeffect of variable access and 
+      ${\color{lcoeff} \wedge}$ appears in lambda abstraction as earlier.
+
+      $$$
+      \dfrac
+        {x:{\color{ltyp} \tau} \in \Gamma}
+        {\Gamma {\scriptsize \;@\;} {\color{lcoeff} \sf \text{use}} \vdash x : {\color{ltyp} \tau}}
+      
+      $$$
+      \dfrac
+        {\Gamma, x:{\color{ltyp} \tau_1} {\scriptsize \;@\;} {\color{lcoeff} r\wedge s} \vdash e : {\color{ltyp} \tau_2 } }
+        {\Gamma {\scriptsize \;@\;} {\color{lcoeff} r} \vdash {\color{lkvd} \text{fun}}~x \rightarrow e : {\color{ltyp} \tau_1} \xrightarrow{~\color{lcoeff} s~} {\color{ltyp} \tau_2}}
+
+      $$$
+      \dfrac
+        {\Gamma {\scriptsize \;@\;} {\color{lcoeff} r} \vdash e_1 : {\color{ltyp} \tau_1} \xrightarrow{~\color{lcoeff} t~} {\color{ltyp} \tau_2} ~~~~~~
+         \Gamma {\scriptsize \;@\;} {\color{lcoeff} s} \vdash e_2 : {\color{ltyp} \tau_1} }
+        {\Gamma {\scriptsize \;@\;} {\color{lcoeff} r \oplus (s \circledast t)} \vdash e_1~e_2 : {\color{ltyp} \tau_2}}
+      
+      In application, we use _point-wise composition_ ${\color{lcoeff} \oplus}$. On the left, we reduce $e_1$ to a function.
+      On the right, we evaluate its argument and then the function. The function call is modelled by _sequential composition_ 
+      ${\color{lcoeff} \circledast}$ of the coeffect of the argument and of the function.
+      
+      </div>
+      <div class="slide">
+      
+      ### Implicit parameter coeffects
+      
+      The coeffect algebra of implicit parameters is simple. A variable access requires no implicit
+      parameters and is annotated with ${\color{lcoeff} \emptyset}$ (there is a separate rule for
+      accessing implicit parameters).
+
+      $$$
+      \dfrac
+        {x:{\color{ltyp} \tau} \in \Gamma}
+        {\Gamma {\scriptsize \;@\;} {\color{lcoeff} \emptyset} \vdash x : {\color{ltyp} \tau}}
+      
+      $$$
+      \dfrac
+        {\Gamma, x:{\color{ltyp} \tau_1} {\scriptsize \;@\;} {\color{lcoeff} r\cup s} \vdash e : {\color{ltyp} \tau_2 } }
+        {\Gamma {\scriptsize \;@\;} {\color{lcoeff} r} \vdash {\color{lkvd} \text{fun}}~x \rightarrow e : {\color{ltyp} \tau_1} \xrightarrow{~\color{lcoeff} s~} {\color{ltyp} \tau_2}}
+
+      $$$
+      \dfrac
+        {\Gamma {\scriptsize \;@\;} {\color{lcoeff} r} \vdash e_1 : {\color{ltyp} \tau_1} \xrightarrow{~\color{lcoeff} t~} {\color{ltyp} \tau_2} ~~~~~~
+         \Gamma {\scriptsize \;@\;} {\color{lcoeff} s} \vdash e_2 : {\color{ltyp} \tau_1} }
+        {\Gamma {\scriptsize \;@\;} {\color{lcoeff} r \cup (s \cup t)} \vdash e_1~e_2 : {\color{ltyp} \tau_2}}
+      
+      In both lambda abstraction and application, we combine the coeffects using ${\color{lcoeff} \cup}$.
+      A body of a lambda has access to a combination of available parameters and an application requires
+      all parameters that are needed by the sub-expressions.
+            
+      </div>
+      <div class="slide">
+      
+      ### Dataflow coeffects
+      
+      Accessing the value of a variable requires ${\color{lcoeff} 0}$ past values. A function body
+      can access ${\color{lcoeff} \text{min}}$ of the past values that are available for the 
+      variables in scope and the bound variable $x$.
+
+      $$$
+      \dfrac
+        {x:{\color{ltyp} \tau} \in \Gamma}
+        {\Gamma {\scriptsize \;@\;} {\color{lcoeff} 0} \vdash x : {\color{ltyp} \tau}}
+      
+      $$$
+      \dfrac
+        {\Gamma, x:{\color{ltyp} \tau_1} {\scriptsize \;@\;} {\color{lcoeff} \text{min}(r, s)} \vdash e : {\color{ltyp} \tau_2 } }
+        {\Gamma {\scriptsize \;@\;} {\color{lcoeff} r} \vdash {\color{lkvd} \text{fun}}~x \rightarrow e : {\color{ltyp} \tau_1} \xrightarrow{~\color{lcoeff} s~} {\color{ltyp} \tau_2}}
+
+      $$$
+      \dfrac
+        {\Gamma {\scriptsize \;@\;} {\color{lcoeff} r} \vdash e_1 : {\color{ltyp} \tau_1} \xrightarrow{~\color{lcoeff} t~} {\color{ltyp} \tau_2} ~~~~~~
+         \Gamma {\scriptsize \;@\;} {\color{lcoeff} s} \vdash e_2 : {\color{ltyp} \tau_1} }
+        {\Gamma {\scriptsize \;@\;} {\color{lcoeff} \text{max}(r, s + t)} \vdash e_1~e_2 : {\color{ltyp} \tau_2}}
+      
+      In application, we need ${\color{lcoeff} s+t}$ past values to produce ${\color{lcoeff} t}$ past
+      values (to call the function) using an expression $e_2$ that requires ${\color{lcoeff} s}$ past
+      values to produce a single value. The overall context also needs to have enough past values to satisfy
+      the requirements of $e_1$.
+      </div>
+      <<<<
+    </div>
+    </div>
+    <div class="col-md-5 ia-choice ia-ui-bar-right ia-ui-morelink" data-ia-undoable="true" data-ia-key="theory-all" 
       data-ia-ui-kind="light" data-ia-ui-prop="border-color" data-ia-show="theory-all" data-ia-hide="">    
       >>>>      
-      There is much more that can be said about the coeffect type system. You can find a
-      detailed description in the [papers on coeffects](#papers) or you can expand this
-      section and read a longer summary.
+      ### Coeffect type systems
       
-      First, coeffect type systems are parameterized by a _coeffect algebra_. This means
-      that the same system can be instantiated to track information about implicit parameters,
-      dataflow or something else. Second, there is a _flat_ and _structural_ version. The
-      flat one adds just one annotation for the whole context. The structural version adds
-      annotations per-variable and so it is more precise for applications like dataflow.
+      Coeffects capture multiple different kinds of context requirements using a unified
+      system. Each concrete coeffect system tracks different information - dataflow _number_
+      of past values and implicit parameters _sets_ of names.
       
-      You can experiment with the type checker below. Just choose one of the systems, type
-      in your program, run the type checker and explore the typing derivation!
+      To capture this, the type system is parameterized by a _coeffect algebra_. This consists
+      ofthe ${\color{coeff} \wedge}$ operator used in lambda abstraction together with 
+      ${\color{coeff} \circledast},{\color{coeff} \oplus}$ and a special value ${\color{coeff} \sf \text{use}}$.
+      The sidebar on the left (or above) shows the general type system and its cocrete instantiation
+      for implicit parameters or dataflow. For more details, see [the coeffect papers](#papers)!
+      
+      The second interesting feature is that there is a _flat_ and a _structural_ version of the
+      system. The flat one adds just one annotation for the whole context. The structural version adds
+      annotations per-variable and so it is more precise for applications like dataflow. This essay
+      mostly focuses on the flat version, but you can read more if you expand this section.
       <<<<
-    </div>
+    </div>    
   </div>
   <div class="ia" data-ia-key="theory-all" data-ia-mode="long">
-    <div class="row">
-      <div class="col-sm-1 col-md-2"></div>
-      <div class="col-sm-10 col-md-8">
-        >>>>
-        
-        ### Coeffect algebra
-                
-        Coeffects are a general mechanism that can be instantiated to capture concrete contextual
-        properties. We looked at implicit parameters and dataflow as two examples, but there are
-        many other properties that can be captured as coeffects. To make this possible, the type
-        system is parameterized by a _coeffect algebra_. 
-        
-        The $\wedge$ operation shown above is one part of the coeffect algebra. Unlike effect
-        systems, which often use just a single operation - typically $\cup$ - the coeffect algebra
-        is richer. There are three operations that correspond to _sequential composition_, 
-        _merging of context_ (when merging information from the declaration-site and call-site
-        in lambda abstraction) and _splitting of context_ (when the same context is used by
-        two sub-expressions). For more details, see [the coeffect papers](#papers)!
-              
-        <<<<
-      </div>
-    </div>  
   <div class="row new-section">
     >>>>
     <div class="col-md-6">
-    <div class="callout" style="margin:10px;">
+    <div class="callout" style="margin:0px;">
       
     ### Flat coeffect systems
     
@@ -1199,7 +1278,7 @@
     </div>
     </div>
     <div class="col-md-6">
-    <div class="callout" style="margin:10px;">
+    <div class="callout" style="margin:0px;">
       
     ### Structural coeffect systems
 
@@ -1215,8 +1294,9 @@
     x_1\!:\!{\color{ltyp}\tau_1}, \ldots, x_n\!:\!{\color{ltyp}\tau_n} {\scriptsize \;@\;} {\color{lcoeff} \langle r_1,\ldots,r_n \rangle} \vdash e : {\color{ltyp} \tau}
 
     In case of dataflow, each annotation in the vector captures the number of required past values of the
-    corresponding single variable. Given expression $x + {\color{lkvd}\text{prev}}~y$, the vector
-    attached to $x, y$ would be ${\color{lcoeff} \langle 0, 1 \rangle}$.
+    corresponding single variable. Given an expression $x + {\color{lkvd}\text{prev}}~y$, the vector
+    attached to $x, y$ is ${\color{lcoeff} \langle 0, 1 \rangle}$, requiring the current value of
+    $x$ and one past value of $y$.
 
     </div>  
     </div>
@@ -1711,6 +1791,8 @@ dyn ?other</textarea>
   which is translated to JavaScript using [FunScript](http://funscript.info). There is also some
   Markdown parsed using [F# Formatting](http://tpetricek.github.io/FSharp.Formatting/). The
   chart (in the playground with mouse movements) has been created using [Smoothie Charts](http://smoothiecharts.org/).
+  It would never be possible without [MathJax](https://www.mathjax.org/), which (amazingly) renders LaTeX
+  typing derivations in the browser.
   
   Coeffects are the topic of my [PhD thesis](http://tomasp.net/academic/theses/coeffects/) at
   University of Cambridge. Thanks to my supervisor [Alan Mycroft](http://www.cl.cam.ac.uk/~am21/)
