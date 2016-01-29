@@ -188,7 +188,6 @@ module Html =
     | Type.FlatComonad(cl, t) ->
         sb.push("C ")
         match flattenCoeffects kind cl with
-        | PrimitiveCoeffect.PastValues 0 
         | PrimitiveCoeffect.ResourceSet [] -> ()
         | PrimitiveCoeffect.PastValues n -> 
             sb.push(string n + " ")
@@ -248,6 +247,12 @@ module Html =
 
     // Generate the body and then call wrapping functions
     ( match expr with
+      // Implicit parameters
+      | Expr.Builtin("lookup", Annotation.Flat(Coeffect.ImplicitParam(n, _))::_) -> 
+          span ["title", inl (printTyp kind typ); "class","op"] "lookup" ++ text " " ++ span ["class","op"] ("?" + n) 
+      | Expr.Builtin("letimpl", Annotation.Flat(Coeffect.ImplicitParam(n, _))::_) -> 
+          span ["title", inl (printTyp kind typ); "class","op"] "letimpl" ++ text " " ++ span ["class","op"] ("?" + n) 
+      // Other things
       | Expr.Var(s) -> span ["title", inl (printTyp kind typ); "class","i"] s 
       | Expr.Builtin(s, _) -> span ["title", inl (printTyp kind typ); "class","op"] s 
       | Expr.QVar(s) -> span ["title", inl (printTyp kind typ); "class","i"] ("?" + s)
@@ -381,7 +386,7 @@ module MathJax =
       ar.push("\!:\!")
       typ kind true t ar |> ignore
     ar      
-
+    
   /// Format the coeffect (either set of implicit parameters or a number)
   and coeff kind short c (ar:string[]) =
     ar.push("{\\color{coeff} ")

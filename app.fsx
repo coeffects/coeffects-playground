@@ -361,12 +361,11 @@ module Client =
         match pars tokensNotWhite with
         | Some([], expr) ->
             TypeChecker.typeCheck (fun _ _ -> Errors.parseError "Unexpected built-in! Built-ins can only appear in translated code.") kind mode expr
-            // TODO: Rename all type/coeffect variables before translation to remove clashes
         | _ -> Errors.parseError "Check that everything is syntactically valid. For example, you might be missing the <code>in</code> keyword."
     | _ -> Errors.parseError "Unexpected token. You might be trying to use some unsupported operator or keyword."
 
   let reload kind mode prefix value = 
-    try
+    //try
       if hasFeature prefix "langchooser" then
         let mode = match mode with CoeffectMode.Flat -> "flat" | _ -> "structural"
         let kind = match kind with CoeffectKind.ImplicitParams -> "implicit" | _ -> "dataflow"
@@ -385,8 +384,8 @@ module Client =
       |> Option.iter (fun clr -> setupJudgement clr prefix kind typed)
 
       let transle  = 
-        ( if mode = CoeffectMode.Flat then Translation.Flat.translate (Typed((), Expr.Builtin("finput", []))) [] typed 
-          else Translation.Structural.translate (Typed((), Expr.Builtin("sinput", []))) [] typed ) 
+        ( if mode = CoeffectMode.Flat then Translation.Flat.translate (Translation.newFreshName ()) (Typed((), Expr.Builtin("finput", []))) [] typed 
+          else Translation.Structural.translate (Translation.newFreshName ()) (Typed((), Expr.Builtin("sinput", []))) [] typed ) 
         |> Translation.contract
         |> TypeChecker.typeCheck (Translation.builtins (TypeChecker.coeff typed)) (CoeffectKind.Embedded kind) CoeffectMode.None
 
@@ -399,8 +398,8 @@ module Client =
       if hasFeature prefix "livechart" then
         setupLiveChart prefix kind mode typed transle
       reportError prefix value None
-    with e ->
-      reportError prefix value (Some(e.ToString()))
+    //with e ->
+      //reportError prefix value (Some(e.ToString()))
 
   let main () =
     let counter = ref 0

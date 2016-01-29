@@ -195,6 +195,38 @@ nav.affix .ia-ui-menu li {
 
 /* ------------------------------------------------------------------------------------ *\
 
+   #######
+   #        ####   ####  ##### ###### #####
+   #       #    # #    #   #   #      #    #
+   #####   #    # #    #   #   #####  #    #
+   #       #    # #    #   #   #      #####
+   #       #    # #    #   #   #      #   #
+   #        ####   ####    #   ###### #    #
+
+\* ------------------------------------------------------------------------------------ */
+
+.footer p {
+  font-size:11pt;
+}
+.footer h3 {
+  font-size:15pt;
+  margin-top:0px;
+}
+.footer li { 
+ font-size:11pt;
+ margin-top:0px;
+ margin-bottom:2px;
+}
+
+.footer .no-bullets li i {
+ float:left;
+ margin-left:-24px;
+ margin-top:5px;
+ font-size:11pt;
+}
+
+/* ------------------------------------------------------------------------------------ *\
+
   #####
  #     # #####   ##   #    # #####    ##   #####  #####     #####   ####  #####  #   #
  #         #    #  #  ##   # #    #  #  #  #    # #    #    #    # #    # #    #  # #
@@ -261,6 +293,9 @@ nav.affix .ia-ui-menu li {
   margin:0px 0px 4px 0px;
   font: 13pt 'PT Sans',verdana,sans-serif;
 }
+.body td {
+  font: 13pt 'PT Sans',verdana,sans-serif;
+}
 
 .no-bullets li {
   list-style-type:none;
@@ -271,6 +306,7 @@ nav.affix .ia-ui-menu li {
   margin-top:10px;
   font-size:16pt;
 }
+
 /* Black callouts */
 .body .callout {
   background:black;
@@ -343,6 +379,10 @@ nav.affix .ia-ui-menu li {
 }
 .pre-play a:hover, .pre-edit a:hover {
   color:#505050;
+  text-decoration:none;
+}
+h2 a, h2 a:hover {
+  color:black;
   text-decoration:none;
 }
 
@@ -462,6 +502,24 @@ nav.affix .ia-ui-menu li {
 
 @media (min-width: 768px) {
   #playground-callout i { margin-top:10px; }
+}
+
+.grid .cur {
+  background:#996C46;
+}
+.grid .nb {
+  background:#6B5232;
+}
+.grid td, .grid tr
+{
+  background:#282828;
+  border:solid 1px #606060;
+  padding:10px;
+}
+.grid td
+{
+  width:50px;
+  text-align:center !important;
 }
 
 /* ------------------------------------------------------------------------------------ *\

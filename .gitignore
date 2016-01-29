@@ -6,3 +6,4 @@ obj
 packages
 paket-files
 *.svclog
+*.debug

@@ -28,7 +28,18 @@ let rec removeImplicit (v, vt) coeff =
 module Flat = 
   let Builtin(s, ans) = Expr.Builtin(s, [ for a in ans -> Annotation.Flat(a)])
 
-  let rec translate ctx vars (Typed((v,c,t), e)) = 
+  let rec translateType t = 
+    match t with 
+    | Type.Variable _
+    | Type.Primitive _ -> t
+    | Type.Func((cf, _), t1, t2) -> 
+        Type.Func((Coeffect.None, Coeffect.None), Type.FlatComonad(cf, translateType t1), translateType t2)
+    | Type.Tuple ts -> Type.Tuple(List.map translateType ts)
+    | Type.FlatComonad _ 
+    | Type.StructuralComonad _ -> failwith "No comonads in normal code"
+
+  let rec translate freshName ctx vars (Typed((v,c,t), e)) = 
+    let translate = translate freshName 
     match e with
     | Expr.Number(n) ->
         !Expr.Number(n)
@@ -43,20 +54,23 @@ module Flat =
         getVarProj (!Builtin("counit", [c]) |@| ctx) vars
 
     | Expr.QVar(v) ->
-        !Builtin("lookup", [Coeffect.ImplicitParam(v, t)]) |@| ctx
+        !Builtin("lookup", [Coeffect.ImplicitParam(v, translateType t)]) |@| ctx
 
     | Expr.App(e1, e2) ->
         let r, s, t = coeff e1, coeff e2, match typ e1 with Type.Func((c, _), _, _) -> c | _ -> failwith "Not a function!"        
+        let ctx0, ctx1, ctx2 = freshName "ctx", freshName "ctx", freshName "ctx"
         let ctxSplit = !Builtin("split", [r; s ** t]) |@| (!Builtin("duplicate", [r ++ (s ** t)]) |@| ctx)
-        let fn = !Expr.Fun(!!Pattern.Var("ctx"), translate (!Expr.Var("ctx")) vars e2)
-        let cobind = !Builtin("cobind", [s; t]) |@| fn |@| !Expr.Var("ctx2")
-        let body = translate (!Expr.Var("ctx1")) vars e1 |@| cobind
-        !Expr.Let(!!Pattern.Tuple([!!Pattern.Var("ctx1"); !!Pattern.Var("ctx2")]), ctxSplit, body)
+        let fn = !Expr.Fun(!!Pattern.Var(ctx0), translate (!Expr.Var(ctx0)) vars e2)
+        let cobind = !Builtin("cobind", [s; t]) |@| fn |@| !Expr.Var(ctx2)
+        let body = translate (!Expr.Var(ctx1)) vars e1 |@| cobind
+        !Expr.Let(!!Pattern.Tuple([!!Pattern.Var(ctx1); !!Pattern.Var(ctx2)]), ctxSplit, body)
 
     | Expr.Fun(TypedPat(_, Pattern.Var v), e) ->
         let r, s = c, match t with Type.Func((c, _), _, _) -> c | _ -> failwith "Not a function!"
-        let merged = Expr.App(!Builtin("merge", [s; r]), !Expr.Tuple([!Expr.Var(v); ctx]))
-        !Expr.Fun(!!Pattern.Var(v), translate (!merged) (v::vars) e)
+        let ctx0 = freshName "ctx"
+        let merged = !Expr.App(!Builtin("merge", [s; r]), !Expr.Tuple([!Expr.Var(v); ctx]))
+        !Expr.Fun(!!Pattern.Var(v), 
+            !Expr.Let(!!Pattern.Var(ctx0), merged, translate (!Expr.Var(ctx0)) (v::vars) e))
 
     | Expr.Let(TypedPat(_, Pattern.Var v), e1, e2) -> 
         // let <v> = <e1> in <e2>
@@ -65,17 +79,19 @@ module Flat =
         // [ @ s |- e2 ] (merge [s,s] (cobind [r,s] (fun ctx -> [ @ r |- e1 ] ctx) ctx2, ctx1))
         let r, s = coeff e1, coeff e2
         let ctxSplit = !Builtin("split", [s; r ** s]) |@| (!Builtin("duplicate", [s ++ (r ** s)]) |@| ctx)
-        let fn = !Expr.Fun(!!Pattern.Var("ctx"), translate (!Expr.Var("ctx")) vars e1)
-        let cobind = !Builtin("cobind", [r; s]) |@| fn |@| !Expr.Var("ctx2")
-        let merged = !Builtin("merge", [s; s]) |@| !Expr.Tuple([cobind; !Expr.Var("ctx1")])
+        let ctx0, ctx1, ctx2 = freshName "ctx", freshName "ctx", freshName "ctx"
+        let fn = !Expr.Fun(!!Pattern.Var(ctx0), translate (!Expr.Var(ctx0)) vars e1)
+        let cobind = !Builtin("cobind", [r; s]) |@| fn |@| !Expr.Var(ctx2)
+        let merged = !Builtin("merge", [s; s]) |@| !Expr.Tuple([cobind; !Expr.Var(ctx1)])
         let body = translate merged (v::vars) e2
-        !Expr.Let(!!Pattern.Tuple([!!Pattern.Var("ctx1"); !!Pattern.Var("ctx2")]), ctxSplit, body)
+        !Expr.Let(!!Pattern.Tuple([!!Pattern.Var(ctx1); !!Pattern.Var(ctx2)]), ctxSplit, body)
 
     | Expr.Binary(op, e1, e2) ->
         let r, s = coeff e1, coeff e2
+        let ctx1, ctx2 = freshName "ctx", freshName "ctx"
         let ctxSplit = !Builtin("split", [r; s]) |@| (!Builtin("duplicate", [r ++ s]) |@| ctx)
-        let body = !Expr.Binary(op, translate (!Expr.Var("ctx1")) vars e1, translate (!Expr.Var("ctx2")) vars e2)
-        !Expr.Let(!!Pattern.Tuple([!!Pattern.Var("ctx1"); !!Pattern.Var("ctx2")]), ctxSplit, body)
+        let body = !Expr.Binary(op, translate (!Expr.Var(ctx1)) vars e1, translate (!Expr.Var(ctx2)) vars e2)
+        !Expr.Let(!!Pattern.Tuple([!!Pattern.Var(ctx1); !!Pattern.Var(ctx2)]), ctxSplit, body)
 
     | Expr.Prev(e) ->
         let r, r' = match c with Coeffect.Past n -> Coeffect.Past n, Coeffect.Past (n-1) | _ -> failwith "Unexpected coeffect in prev."
@@ -92,11 +108,12 @@ module Flat =
         // produce the right comonad value as the result
 
         let r, s', s = coeff e1, coeff e2, removeImplicit (v, vt) (coeff e2)
+        let ctx0, ctx1, ctx2 = freshName "ctx", freshName "ctx", freshName "ctx"
         let ctxSplit = !Builtin("split", [s; r]) |@| (!Builtin("duplicate", [s ++ r]) |@| ctx)      
-        let arg = translate (!Expr.Var("ctx2")) vars e1
-        let merged = !Builtin("letimpl", [Coeffect.ImplicitParam(v, vt); s; s']) |@| !Expr.Tuple([!Expr.Var("ctx1"); arg])
-        let body = translate merged (vars) e2
-        !Expr.Let(!!Pattern.Tuple([!!Pattern.Var("ctx1"); !!Pattern.Var("ctx2")]), ctxSplit, body)
+        let arg = translate (!Expr.Var(ctx2)) vars e1
+        let merged = !Builtin("letimpl", [Coeffect.ImplicitParam(v, vt); s; s']) |@| !Expr.Tuple([!Expr.Var(ctx1); arg])
+        let body = !Expr.Let(!!Pattern.Var(ctx0), merged, translate (!Expr.Var(ctx0)) vars e2)
+        !Expr.Let(!!Pattern.Tuple([!!Pattern.Var(ctx1); !!Pattern.Var(ctx2)]), ctxSplit, body)
       
     | Expr.Tuple _
     | Expr.Builtin _ 
@@ -121,7 +138,8 @@ module Structural =
     let newVars = coeffs |> List.map (fun (v, (_, c)) -> v, c)
     !Builtin("choose_" + String.concat "" flags, [coeffs1; coeffs2]) |@| ctx, newVars
 
-  let rec translate ctx (vars:list<string * Coeffect>) (Typed((cv:CoeffVars,c,t), e)) = 
+  let rec translate freshName ctx (vars:list<string * Coeffect>) (Typed((cv:CoeffVars,c,t), e)) = 
+    let translate = translate freshName 
     
     let ctx, vars = transformContext ctx vars cv
   
@@ -138,10 +156,10 @@ module Structural =
         let r = [ for v, _ in vars -> fst (cv.[v]) ]
         let varC, varT = match t with Type.Func((_, c), t, _) -> c, t | _ -> failwith "Not a function!"
         let s = [ varC ]
-        let merged = 
-          Expr.App(!Builtin("merge", [s; r]), !Expr.Tuple([!Expr.Var(v); ctx]))
-
-        !Expr.Fun(!!Pattern.Var(v), translate (!merged) ((v, varC)::vars) e)
+        let ctx0 = freshName "ctx"
+        let merged = !Expr.App(!Builtin("merge", [s; r]), !Expr.Tuple([!Expr.Var(v); ctx]))
+        !Expr.Fun(!!Pattern.Var(v), 
+          !Expr.Let(!!Pattern.Var(ctx0), merged, translate (!Expr.Var(ctx0)) ((v, varC)::vars) e))
 
     | Expr.Prev(e) ->
         let infos = [ for v, c in vars -> match c with Coeffect.Past n -> c, Coeffect.Past(n-1), v | _ -> failwith "Unexpected coeffect in prev." ]
@@ -173,7 +191,8 @@ module Structural =
 
         //let ctxSplit = !Builtin("split", [r; s ** t]) |@| (!Builtin("duplicate", [r ++ (s ** t)]) |@| ctx)
         let cobind = 
-          let fn = !Expr.Fun(!!Pattern.Var("ctx"), translate (!Expr.Var("ctx")) vars2' e2)
+          let ctx0 = freshName "ctx"
+          let fn = !Expr.Fun(!!Pattern.Var(ctx0), translate (!Expr.Var(ctx0)) vars2' e2)
           !Builtin("cobind", [s; [t]]) |@| fn |@| ctx2
         //let body = 
         translate ctx1 vars1 e1 |@| cobind
@@ -261,6 +280,15 @@ module Structural =
     | Expr.Fun(_, _) ->
         failwith "Not supported"
 *)    
+
+let newFreshName () = 
+  let counter = ref 0
+  fun s ->
+    incr counter
+    let n = counter.Value
+    if n <= 9 then s + string n
+    elif n <= 35 then s + (char (55 + n)).ToString()
+    else s + string (n - 26)
 
 let rec contract (Typed(t, e)) = 
   match e with

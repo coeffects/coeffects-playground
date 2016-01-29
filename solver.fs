@@ -8,13 +8,20 @@ open Coeffects
 open Coeffects.Ast
 
 let substitute v1 other = 
-  let rec substitute t = 
+  let rec substituteCoeff c =
+    match c with
+    | Coeffect.Split(c1, c2) -> Coeffect.Split(substituteCoeff c1, substituteCoeff c2)
+    | Coeffect.Merge(c1, c2) -> Coeffect.Merge(substituteCoeff c1, substituteCoeff c2)
+    | Coeffect.Seq(c1, c2) -> Coeffect.Seq(substituteCoeff c1, substituteCoeff c2)
+    | Coeffect.ImplicitParam(n, t) -> Coeffect.ImplicitParam(n, substitute t)
+    | c -> c
+  and substitute t = 
     match t with 
     | Type.Variable v2 when v1 = v2 -> other
     | Type.Variable v2 -> Type.Variable v2
-    | Type.FlatComonad(c, t) -> Type.FlatComonad(c, substitute t)
-    | Type.Func(c, t1, t2) -> Type.Func(c, substitute t1, substitute t2)
-    | Type.StructuralComonad(c, t) -> Type.StructuralComonad(c, substitute t)
+    | Type.FlatComonad(c, t) -> Type.FlatComonad(substituteCoeff c, substitute t)
+    | Type.Func((c1, c2), t1, t2) -> Type.Func((substituteCoeff c1, substituteCoeff c2), substitute t1, substitute t2)
+    | Type.StructuralComonad(c, t) -> Type.StructuralComonad(List.map substituteCoeff c, substitute t)
     | Type.Tuple(ts) -> Type.Tuple(List.map substitute ts)
     | Type.Primitive p -> Type.Primitive p
   List.map (fun (t1, t2) -> substitute t1, substitute t2)

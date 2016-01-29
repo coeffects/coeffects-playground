@@ -254,6 +254,103 @@ $(function() {
 })
 
 // ----------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
+
+$(function() {
+  function reset(el)
+  {
+    var gr = document.getElementById(el);
+    var rows = gr.getElementsByTagName("tr");
+    for(var i=0; i<3; i++)
+    {
+      var row = rows[i].getElementsByTagName("td");
+      for(var j=0; j<3; j++) row[j].className = "";
+    }
+  }
+  function highlight(el,x,y,cls)
+  {
+    if (x<0 || x>2 || y<0 || y>2) return;
+    var gr = document.getElementById(el);
+    var rows = gr.getElementsByTagName("tr");
+    rows[x].getElementsByTagName("td")[y].className=cls;
+  }
+  function get(el,x,y)
+  {
+    if (x<0 || x>2 || y<0 || y>2) return null;
+    var gr = document.getElementById(el);
+    var rows = gr.getElementsByTagName("tr");
+    return 1.0 * rows[x].getElementsByTagName("td")[y].innerText;
+  }
+  function set(el,x,y,v)
+  {
+    if (x<0 || x>2 || y<0 || y>2) return null;
+    var gr = document.getElementById(el);
+    var rows = gr.getElementsByTagName("tr");
+    rows[x].getElementsByTagName("td")[y].innerText = Math.round(v*10)/10;
+  }
+  function calculate(x,y)
+  {
+    reset("grin");
+    reset("grout");
+    highlight("grout", x, y, "cur");
+    highlight("grin", x, y, "cur");
+    highlight("grin", x-1, y, "nb");
+    highlight("grin", x+1, y, "nb");
+    highlight("grin", x, y-1, "nb");
+    highlight("grin", x, y+1, "nb");
+    var sum = 0;
+    var count = 0;
+    for(var i=-1; i<=1; i++)
+    {
+      for(var j=-1; j<=1; j++)
+      {
+        if (i != 0 && j != 0) continue;
+        var v = get("grin", x+i, y+j);
+        if (v != null) { sum += v; count++; }
+      }
+    }
+    set("grout",x,y,sum/count);
+  }
+  var listeTimer = -1;
+  function run(x,y)
+  {
+    calculate(x,y);
+    x++;
+    if (x==3) { x = 0; y++; }
+    if (y<3) {
+      listeTimer = setTimeout(function () { run(x,y); }, 1500);
+    } else {
+      listeTimer = setTimeout(function () { reset("grin"); reset("grout"); }, 1500);
+    }
+  }
+  $("#btn-comonad-demo").on("click", function() { 
+    if (listeTimer != -1) clearTimeout(listeTimer);
+    $("#grout td").text("?");
+    run(0,0); 
+  });
+});
+
+
+// ----------------------------------------------------------------------------------------
+// Smooth scroll to anchor
+// ----------------------------------------------------------------------------------------
+
+$(function() {
+  $('a[href*=#]:not([href=#])').click(function() {
+    if (location.pathname.replace(/^\//,'') == this.pathname.replace(/^\//,'') && location.hostname == this.hostname) {
+      var target = $(this.hash);
+      target = target.length ? target : $('[name=' + this.hash.slice(1) +']');
+      if (target.length) {
+        $('html,body').animate({
+          scrollTop: target.offset().top
+        }, 1000);
+        return false;
+      }
+    }
+  });
+});
+
+// ----------------------------------------------------------------------------------------
 // Playground for dataflow computations based on mouse X & Y position
 // ----------------------------------------------------------------------------------------
 

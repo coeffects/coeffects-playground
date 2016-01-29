@@ -25,27 +25,20 @@ open Coeffects.Solver
 open Coeffects.Translation
 
 
-let source = """          let smooth x y = 
-            let sum4 v = v + prev (v + prev (v + prev v)) in
-            let prev4 v = prev prev prev prev v in
-            let s1 = sum4 x + sum4 (prev4 x) in
-            let s2 = sum4 (prev4 (prev4 x)) in
-            (s1 + s2) / 12 in
-          smooth
-"""
+let source = """?fst ?snd"""
 let (Parsec.Parser lex) = Lexer.lexer
 let tokens = lex (List.ofArray (source.ToCharArray())) |> Option.get |> snd
 let tokens' = tokens |> List.filter (function Token.White _ -> false | _ -> true)
 let (Parsec.Parser pars) = Parser.expr ()
 let expr = pars tokens' |> Option.get |> snd
-let builtins1, kind, mode = (fun _ _ -> failwith "!"), CoeffectKind.PastValues, CoeffectMode.Structural
+let builtins1, kind, mode = (fun _ _ -> failwith "!"), CoeffectKind.ImplicitParams, CoeffectMode.Flat
 let typed = TypeChecker.typeCheck builtins1 kind mode expr
 
 
 let builtins2, kind2, mode2 = Translation.builtins (TypeChecker.coeff typed), CoeffectKind.Embedded kind, CoeffectMode.None
 
 let transl = 
-  Translation.Structural.translate (Typed((), Expr.Builtin("sinput", []))) [] typed 
+  Translation.Flat.translate (Typed((), Expr.Builtin("finput", []))) [] typed 
   |> Translation.contract
   |> TypeChecker.typeCheck builtins2 kind2 mode2
 
