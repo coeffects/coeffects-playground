@@ -7,6 +7,8 @@ module Coeffects.Solver
 open Coeffects
 open Coeffects.Ast
 
+/// Substitutes a type variable for a given type inside type assignments
+/// (list of type * type pairs), also handling types in implicit parameter coeffects
 let substitute v1 other = 
   let rec substituteCoeff c =
     match c with

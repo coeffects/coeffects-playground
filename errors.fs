@@ -1,15 +1,34 @@
 ﻿// ------------------------------------------------------------------------------------------------
-// Error reporting
+// Error reporting and logging
 // ------------------------------------------------------------------------------------------------
 
 namespace Coeffects
 open Coeffects.Ast
 
-module Trace = 
+module TraceInternal = 
+  /// Log object to browser console or to console
   [<FunScript.JSEmitInline("console.log({0})")>]
   let log obj = printfn "%A" obj
 
-  [<ReflectedDefinition>]
+[<ReflectedDefinition>]
+module Trace = 
+  let traceEnabled = false
+
+  /// Log user interaction or other event 
+  [<FunScript.JSEmit("var o = {}; {0}.forEach(function(tup) { o[tup.Items[0]] = tup.Items[1]; }); return o;")>]
+  let data (args:(string*string)[]) = failwith "!"
+
+  /// Log user interaction or other event 
+  [<FunScript.JSEmitInline("logEvent({0}, {1}, {2})")>]
+  let event category event data = failwith "!"
+
+  /// If `traceEnabled` is set, logs object to browser console
+  /// or to console output (in browser, it shows expandable object)
+  let log obj = 
+    if traceEnabled then 
+      TraceInternal.log obj
+
+  /// Format coeffect as simple string
   let rec formatCoeffect = function
     | Coeffect.Variable s -> "'" + s
     | Coeffect.Use -> "use"
@@ -21,7 +40,7 @@ module Trace =
     | Coeffect.Past n -> "past(" + string n + ")"
     | Coeffect.ImplicitParam(s, _) -> "?" + s
 
-  [<ReflectedDefinition>]
+  /// Format type as HTML-compatible string
   let rec formatType = function 
     | Type.FlatComonad(c, t) -> "C " + formatCoeffect c + " " + formatType t
     | Type.StructuralComonad(cs, t) -> "C [" + (List.map formatCoeffect cs |> String.concat ", ") + "] " + formatType t
@@ -29,6 +48,7 @@ module Trace =
     | Type.Primitive t -> t
     | Type.Tuple(tys) -> "(" + (String.concat " * " (List.map formatType tys)) + ")"
     | Type.Variable v -> "'" + v
+
 
 [<ReflectedDefinition>]
 module Errors =

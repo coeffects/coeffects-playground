@@ -2,18 +2,7 @@
 #r "packages/FunScript/lib/net40/FunScript.Interop.dll"
 #r "packages/FunScript.TypeScript.Binding.lib/lib/net40/FunScript.TypeScript.Binding.lib.dll"
 #r "packages/FunScript.TypeScript.Binding.jquery/lib/net40/FunScript.TypeScript.Binding.jquery.dll"
-(*
-#load "parsec.fs"
-#load "ast.fs"
-#load "errors.fs"
-#load "lexer.fs"
-#load "parser.fs"
-#load "solver.fs"
-#load "typechecker.fs"
-#load "pretty.fs"
-#load "translation.fs"
-*)
-#r @"C:\Tomas\Public\tpetricek\Coeffects\bin\Debug\Coeffects.exe"
+#r "bin/Debug/Coeffects.exe"
 
 open System.IO
 open Coeffects

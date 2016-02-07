@@ -1,21 +1,21 @@
 NUGET
   remote: http://www.nuget.org/api/v2
   specs:
-    FAKE (4.10.1)
-    FSharp.Compiler.Service (1.4.2.1)
+    FAKE (4.20.0)
+    FSharp.Compiler.Service (2.0.0.4)
     FSharp.Core (4.0.0.1)
-    FSharp.Formatting (2.13.0)
-      FSharp.Compiler.Service (>= 1.4.2 < 1.5.0)
-      FSharpVSPowerTools.Core (>= 2.2.0 < 2.3.0)
-    FSharpVSPowerTools.Core (2.2.0)
-      FSharp.Compiler.Service (>= 1.4.2.0)
+    FSharp.Formatting (2.14.0)
+      FSharp.Compiler.Service (>= 2.0.0.3 < 2.1.0)
+      FSharpVSPowerTools.Core (>= 2.3.0 < 2.4.0)
+    FSharpVSPowerTools.Core (2.3.0)
+      FSharp.Compiler.Service (>= 2.0.0.3)
     FunScript (1.1.94)
     FunScript.TypeScript.Binding.jquery (1.1.0.37)
       FunScript.TypeScript.Binding.lib (>= 1.1.0.37)
     FunScript.TypeScript.Binding.lib (1.1.0.37)
-    Suave (0.33.0)
+    Suave (1.1.1)
       FSharp.Core (>= 3.1.2.5)
 GITHUB
   remote: matthid/Yaaf.FSharp.Scripting
   specs:
-    src/source/Yaaf.FSharp.Scripting/YaafFSharpScripting.fs (34b163a2e9b8d81dde07c36cb6775c5bd9216bb6)
+    src/source/Yaaf.FSharp.Scripting/YaafFSharpScripting.fs (48789eeb63382a6934966472e270e87880cb49ed)

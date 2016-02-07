@@ -138,6 +138,7 @@ $(function() {
   // Add toggle event handler for all the elements for choosing displayed content
   $(".ia-choice")
   .on("click", function(e) {
+    logEvent("ia", "toggle", $(this).data("ia-key"));
     var show = " " + $(this).data("ia-show") + " ";
     var hide = " " + $(this).data("ia-hide") + " ";
     var undoable = $(this).data("ia-undoable");
@@ -184,6 +185,8 @@ $(function() {
     var ra = $("#" + id + " .rarrow");
     if (slides[id].current == slides[id].count-1) ra.addClass("rarrow-disabled");
     else ra.removeClass("rarrow-disabled");
+
+    logEvent("ia", "slide", {"id":id, "current":slides[id].current});
   }
   
   // For each ".ia-slide" element, count how many slides it has & add arrows
@@ -243,6 +246,7 @@ $(function() {
   
   var intId = 0;
   $("#rule110btn").on("click", function() {
+    logEvent("ia", "cells", "run");
     if ($(this).html() == "Run") {
       intId = setInterval(addRow, 100);
       $(this).html("Stop");
@@ -324,6 +328,7 @@ $(function() {
     }
   }
   $("#btn-comonad-demo").on("click", function() { 
+    logEvent("ia", "comonad", "run");
     if (listeTimer != -1) clearTimeout(listeTimer);
     $("#grout td").text("?");
     run(0,0); 
@@ -341,6 +346,7 @@ $(function() {
       var target = $(this.hash);
       target = target.length ? target : $('[name=' + this.hash.slice(1) +']');
       if (target.length) {
+        logEvent("ia", "scroll", this.hash);
         $('html,body').animate({
           scrollTop: target.offset().top
         }, 1000);
@@ -416,10 +422,14 @@ function dataflowPlayground(prefix) {
 
   var moveOrTouchHandler = function(event) { 
     if (running == -1) { 
+      logEvent("play", "start-live-chart", "");
       running = setInterval(updateSeries, 50); chartIn.start(); chartOut.start(); 
     }
     if (timer != -1) clearTimeout(timer);
-    timer = setTimeout(function() { chartIn.stop(); chartOut.stop(); clearInterval(running); running = -1; }, 2000);
+    timer = setTimeout(function() { 
+      logEvent("play", "stop-live-chart", "");
+      chartIn.stop(); chartOut.stop(); clearInterval(running); running = -1; 
+    }, 2000);
     
     event.preventDefault();
     var px = event.pageX || event.originalEvent.targetTouches[0].pageX;
@@ -456,4 +466,36 @@ function dataflowPlayground(prefix) {
   chartOut.addTimeSeries(vseries, { strokeStyle: 'rgba(255, 128, 128, 1)', fillStyle: 'rgba(0, 0, 0, 0)', lineWidth: 4 });
   chartOut.streamTo(document.getElementById("chartOut"), 0);
   chartOut.stop();
+}
+
+// ----------------------------------------------------------------------------------------
+// Logging user events
+// ----------------------------------------------------------------------------------------
+
+function guid(){
+  var d = new Date().getTime();
+  if (window.performance && typeof window.performance.now === "function") d += performance.now();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      var r = (d + Math.random()*16)%16 | 0;
+      d = Math.floor(d/16);
+      return (c=='x' ? r : (r&0x3|0x8)).toString(16);
+  });
+}
+
+var ssid = guid();
+var logStarted = false;
+
+function logEvent(category, evt, data) {
+  if (!logStarted) return;
+  var usrid = document.cookie.replace(/(?:(?:^|.*;\s*)coeffusrid\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+  if (usrid == "") { 
+    usrid = guid();
+    document.cookie = "coeffusrid=" + usrid;
+  }
+  var logObj = 
+    { "user":usrid, "session":ssid, 
+      "time":(new Date()).toISOString(), 
+      "category":category, "event":evt, "data": data };
+  $.ajax({ type: 'POST', url: "http://coeffectlogs.azurewebsites.net/log", 
+    data:JSON.stringify(logObj), dataType: "text", success:function(r) { } });
 }

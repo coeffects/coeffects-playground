@@ -207,6 +207,8 @@ nav.affix .ia-ui-menu li {
 
 .footer p {
   font-size:11pt;
+  margin-top:0px;
+  margin-bottom:7px;
 }
 .footer h3 {
   font-size:15pt;

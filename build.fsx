@@ -1,143 +1,86 @@
 // --------------------------------------------------------------------------------------
-// A simple FAKE build script that:
-//  1) Hosts Suave server locally & reloads web part that is defined in 'app.fsx'
-//  2) Deploys the web application to Azure web sites when called with 'build deploy'
+// Generates the playground in `output` folder and hosts it with background watcher
 // --------------------------------------------------------------------------------------
 
-#r "packages/FSharp.Compiler.Service/lib/net45/FSharp.Compiler.Service.dll"
-#r "packages/Suave/lib/net40/Suave.dll"
+#load "packages/FSharp.Formatting/FSharp.Formatting.fsx"
 #r "packages/FAKE/tools/FakeLib.dll"
-#load "paket-files/matthid/Yaaf.FSharp.Scripting/src/source/Yaaf.FSharp.Scripting/YaafFSharpScripting.fs"
+#r "packages/Suave/lib/net40/Suave.dll"
 
 open Fake
 open Suave
 open System
+open System.IO
+open System.Text
+open Suave
 open Suave.Web
-open Suave.Types
-open Yaaf.FSharp.Scripting
+open Suave.Http
 
 // --------------------------------------------------------------------------------------
-// When `app.fsx` changes, we `#load "app.fsx"` using the F# Interactive service
-// and then get the `App.app` value (top-level value defined using `let app = ...`).
+// Generating the web site
 // --------------------------------------------------------------------------------------
 
-let internal fsiSession = ScriptHost.CreateNew()
+Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 
-let reloadScript () =
-  try
-    traceImportant "Reloading app.fsx script..."
-    let appFsx = __SOURCE_DIRECTORY__ @@ "app.fsx"
-    fsiSession.EvalInteraction(sprintf "#load @\"%s\"" appFsx)
-    fsiSession.EvalInteraction("open App")
-    Some(fsiSession.EvalExpression<WebPart>("app"))
-  with :? FsiEvaluationException as e ->
-    traceError "Reloading app.fsx script failed."
-    traceError (sprintf "Message: %s\nError: %s" e.Message e.Result.Error.Merged)
-    None
+/// Generates the javascript file by invoking `fsi translate.fsx`
+let generateScript () =
+  trace "Translating to JavaScript"
+  let _, res = FSIHelper.executeFSI __SOURCE_DIRECTORY__ "translate.fsx" []
+  for line in res do
+    if line.IsError then traceError line.Message
+    else printfn "%s" line.Message
 
-// --------------------------------------------------------------------------------------
-// Suave server that redirects all request to currently loaded WebPart. We watch for
-// changes & reload automatically. The WebPart is then hosted at http://localhost:8087
-// --------------------------------------------------------------------------------------
+/// Generates the `index.html` file (by translating Markdown blocks)
+let processIndex () = 
+  trace "Generating index file"
+  let fi = File.ReadAllText("content/index.html")
+  let reg = RegularExpressions.Regex(">>>>(.*?)<<<<", RegularExpressions.RegexOptions.Singleline)
+  let counter = ref 0
+  let output = reg.Replace(fi,RegularExpressions.MatchEvaluator(fun m -> 
+    let md = m.Groups.[1].Value.Split [|'\n'|]
+    let drop = md |> Seq.filter (System.String.IsNullOrWhiteSpace >> not) |> Seq.map (Seq.takeWhile ((=) ' ') >> Seq.length) |> Seq.min
+    let md = md |> Seq.map (fun s -> if System.String.IsNullOrWhiteSpace s then s else s.Substring(drop)) |> String.concat "\n"
+    let doc = FSharp.Literate.Literate.ParseMarkdownString(md)
+    incr counter
+    FSharp.Literate.Literate.WriteHtml(doc, prefix=sprintf "s%d" counter.Value, lineNumbers=false) ))
+  File.WriteAllText("output/index.html", output)
 
-let currentApp = ref (fun _ -> async { return None })
-
-let serverConfig =
-  { defaultConfig with
-      homeFolder = Some __SOURCE_DIRECTORY__
-      logger = Logging.Loggers.saneDefaultsFor Logging.LogLevel.Debug
-      bindings = [ HttpBinding.mk' HTTP  "127.0.0.1" 8087] }
-
-let reloadAppServer () =
-  reloadScript() |> Option.iter (fun app ->
-    currentApp.Value <- app
-    traceImportant "New version of app.fsx loaded!" )
+/// Copies static CSS and JS files to output
+let copyFiles () =
+  trace "Copying static files"
+  !!"web/*" |> CopyFiles "output"
 
 
 // --------------------------------------------------------------------------------------
-// Running the site locally with automatic refresh
+// FAKE targets
 // --------------------------------------------------------------------------------------
+
+Target "generate" (fun _ ->
+  CleanDir "output"
+  copyFiles()
+  generateScript()
+  processIndex()
+)
 
 Target "run" (fun _ ->
-  let app ctx = currentApp.Value ctx
-  let _, server = startWebServerAsync serverConfig app
-
   // Start Suave & open web browser with the site
-  reloadAppServer()
+  let app = Files.browse (Path.Combine(__SOURCE_DIRECTORY__, "output"))
+  let _, server = startWebServerAsync defaultConfig app
   Async.Start(server)
-  System.Diagnostics.Process.Start("http://localhost:8087") |> ignore
+  System.Diagnostics.Process.Start("http://localhost:8083/index.html") |> ignore
 
   // Watch for changes & reload when app.fsx changes
-  let sources = { BaseDirectory = __SOURCE_DIRECTORY__; Includes = [ "**/*.fs*" ]; Excludes = [] }
-  use watcher = sources |> WatchChanges (fun _ -> reloadAppServer())
+  use watcher1 = 
+    { BaseDirectory = __SOURCE_DIRECTORY__; Includes = [ "**/*.fs*" ]; Excludes = [] }
+    |> WatchChanges (fun _ -> generateScript())
+  use watcher2 = 
+    { BaseDirectory = __SOURCE_DIRECTORY__; Includes = [ "**/web/*" ]; Excludes = [] }
+    |> WatchChanges (fun _ -> copyFiles ())
+  use watcher3 = 
+    { BaseDirectory = __SOURCE_DIRECTORY__; Includes = [ "**/content/*" ]; Excludes = [] }
+    |> WatchChanges (fun _ -> processIndex ())
   traceImportant "Waiting for app.fsx edits. Press any key to stop."
   System.Console.ReadLine() |> ignore
 )
 
-// --------------------------------------------------------------------------------------
-// Targets for running build script in background (for Atom)
-// --------------------------------------------------------------------------------------
-
-open System.IO
-open System.Diagnostics
-
-let runningFileLog = __SOURCE_DIRECTORY__ @@ "build.log"
-let runningFile = __SOURCE_DIRECTORY__ @@ "build.running"
-
-Target "spawn" (fun _ ->
-  if File.Exists(runningFile) then
-    failwith "The build is already running!"
-
-  let ps =
-    ProcessStartInfo
-      ( WorkingDirectory = __SOURCE_DIRECTORY__,
-        FileName = __SOURCE_DIRECTORY__  @@ "packages/FAKE/tools/FAKE.exe",
-        Arguments = "run --fsiargs build.fsx",
-        RedirectStandardOutput = true,
-        RedirectStandardError = true,
-        UseShellExecute = false )
-  use fs = new FileStream(runningFileLog, FileMode.Create, FileAccess.ReadWrite, FileShare.Read)
-  use sw = new StreamWriter(fs)
-  let p = Process.Start(ps)
-  p.ErrorDataReceived.Add(fun data -> printfn "%s" data.Data; sw.WriteLine(data.Data); sw.Flush())
-  p.OutputDataReceived.Add(fun data -> printfn "%s" data.Data; sw.WriteLine(data.Data); sw.Flush())
-  p.EnableRaisingEvents <- true
-  p.BeginOutputReadLine()
-  p.BeginErrorReadLine()
-
-  File.WriteAllText(runningFile, string p.Id)
-  while File.Exists(runningFile) do
-    System.Threading.Thread.Sleep(500)  
-  p.Kill()
-)
-
-Target "attach" (fun _ ->
-  if not (File.Exists(runningFile)) then
-    failwith "The build is not running!"
-  use fs = new FileStream(runningFileLog, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
-  use sr = new StreamReader(fs)
-  while File.Exists(runningFile) do
-    let msg = sr.ReadLine()
-    if not (String.IsNullOrEmpty(msg)) then
-      printfn "%s" msg 
-    else System.Threading.Thread.Sleep(500)
-)
-
-Target "stop" (fun _ ->
-  if not (File.Exists(runningFile)) then
-    failwith "The build is not running!"
-  File.Delete(runningFile)
-)
-
-// --------------------------------------------------------------------------------------
-// Minimal Azure deploy script - just overwrite old files with new ones
-// --------------------------------------------------------------------------------------
-
-Target "deploy" (fun _ ->
-  let sourceDirectory = __SOURCE_DIRECTORY__
-  let wwwrootDirectory = __SOURCE_DIRECTORY__ @@ "../wwwroot"
-  CleanDir wwwrootDirectory
-  CopyRecursive sourceDirectory wwwrootDirectory false |> ignore
-)
-
+"generate" ==> "run"
 RunTargetOrDefault "run"

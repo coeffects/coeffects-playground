@@ -157,6 +157,7 @@ module Expr =
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Coeffect =
+  /// Recognizes a close coeffect, i.e. not containing any variables
   let (|Closed|_|) c = 
     let rec isClosed = function
       | Coeffect.None | Coeffect.Past _ | Coeffect.ImplicitParam _ | Coeffect.Ignore | Coeffect.Use -> true
@@ -167,6 +168,8 @@ module Coeffect =
     if isClosed c then Some(c) else None
 
 module ExprShape = 
+  /// A Leaf expression has no child expression while
+  /// a Nested expression has sub-exporessions
   let (|Leaf|Nested|) e =
     match e with
     | Expr.Binary(_, e1, e2)
@@ -181,6 +184,8 @@ module ExprShape =
     | Expr.Number _
     | Expr.Builtin _ -> Leaf(e)
 
+  /// Recreate a nested expression of the kind specified by 
+  /// `e` with child expressions specified by `args`.
   let recreate e args =
     match e, args with
     | Expr.Prev(_), [e] -> Expr.Prev(e)
@@ -193,4 +198,4 @@ module ExprShape =
     | Expr.Var(v), _ -> Expr.Var(v)
     | Expr.Tuple(_), es -> Expr.Tuple(es)
     | Expr.Builtin(s, a), _ -> Expr.Builtin(s, a)
-    | _ -> failwith "Invalid expression shape in <code>ExprShape.recreate</code>"
+    | _ -> failwith "<strong>Internal error.</strong><br /> Invalid expression shape in <code>ExprShape.recreate</code>"
