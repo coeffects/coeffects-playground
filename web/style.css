@@ -227,6 +227,26 @@ nav.affix .ia-ui-menu li {
  font-size:11pt;
 }
 
+#feedback-alert {
+  background:#8C5E33;
+  text-align:center;
+  width:100%;
+  position:fixed;
+  bottom:-100px;
+  left:0px;
+  font: 12pt 'PT Sans',verdana,sans-serif;
+  padding:10px; 
+  transition:bottom 1s;
+}
+#feedback-alert span {
+  float:right;
+  margin-right:50px;
+}
+#feedback-alert a {
+  text-decoration:underline;
+  color:white;
+}
+
 /* ------------------------------------------------------------------------------------ *\
 
   #####

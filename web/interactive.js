@@ -499,3 +499,20 @@ function logEvent(category, evt, data) {
   $.ajax({ type: 'POST', url: "http://coeffectlogs.azurewebsites.net/log", 
     data:JSON.stringify(logObj), dataType: "text", success:function(r) { } });
 }
+
+
+// ----------------------------------------------------------------------------------------
+// Popup survey form
+// ----------------------------------------------------------------------------------------
+
+$(function() {
+  var setup = false;
+  $(window).scroll(function() {
+    if (setup) return;
+    setup = true;
+    
+    setTimeout(function() { 
+      $('#feedback-alert').css('bottom','-1px')
+    }, 5000);  
+  });
+})
