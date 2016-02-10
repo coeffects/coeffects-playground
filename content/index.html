@@ -158,9 +158,9 @@
       The next big challenge for programming language designers is building languages that 
       understand the _context in which programs run_.
         
-      This challenge is not easy to see. We are so used to work with context using the current
+      This challenge is not easy to see. We are so used to working with context using the current
       cumbersome methods that we do not even _see that there is an issue_. We also do not
-      realize that many programming features related to _context_ can be caputred by the
+      realize that many programming features related to _context_ can be captured by
       a simple _unified abstraction_. This is what coeffects do!
 
       <div class="ia-choice ia-ui-bar-left ia-ui-morelink" data-ia-undoable="true" data-ia-key="intro-examples" data-ia-ui-kind="light" data-ia-ui-prop="border-color" data-ia-show="intro-motivation" data-ia-hide="">
@@ -233,10 +233,10 @@
           
       ### Stencil computations
       
-      In stencil computations, we calcualte value for each element of a grid or mesh based on its
+      In stencil computations, we calculate value for each element of a grid or mesh based on its
       neighborhood. This is useful in simulations in fluid dynamics or weather modelling. 
       
-      A simple example is Conway's Game of Life or other cellural automata. The following example
+      A simple example is Conway's Game of Life or other cellular automata. The following example
       implements the [rule 110](https://en.wikipedia.org/wiki/Rule_110) (`arr.[x]` accesses x<sup>th</sup>
       element of the array and `cursor` is the current position):
 
@@ -1423,7 +1423,7 @@ dyn ?other</textarea>
     The meaning of coeffectful computations can be captured by a structure called _comonad_.
     In programming terms, comonad is a data structure (like a monad) with two operations called
     _counit_ and _cobind_. Coeffects use an <abbr title="Also called graded">indexed</abbr> version 
-    of comonads, which means that the data type also has an annotatioon and so we write it as
+    of comonads, which means that the data type also has an annotation and so we write it as
     $C^{\color{coeff}r} {\color{typ} \tau}$ rather than just $C {\color{typ} \tau}$. We'll
     get back to the annotations later, let's first look at the operations.
     
@@ -1782,7 +1782,7 @@ dyn ?other</textarea>
       previous programming language research related to coeffects (it is in the papers), I would like to 
       list some inspirations for turning coeffects into an interactive essay. 
 
-      The obvious inspiration s Bret Victor's work on [Explorable Explanations](http://worrydream.com/#!/ExplorableExplanations) and his
+      The obvious inspiration is Bret Victor's work on [Explorable Explanations](http://worrydream.com/#!/ExplorableExplanations) and his
       [Scientific Communication](http://worrydream.com/#!/ScientificCommunicationAsSequentialArt) demo.
       But I actually learned about these only later when I started working on this! 
 
