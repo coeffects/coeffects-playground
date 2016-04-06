@@ -505,6 +505,11 @@ function logEvent(category, evt, data) {
 // Popup survey form
 // ----------------------------------------------------------------------------------------
 
+function closeFeedbackAlert() {
+  $('#feedback-alert').css('bottom', '-100px');
+  return false;
+}
+
 $(function() {
   var setup = false;
   $(window).scroll(function() {
