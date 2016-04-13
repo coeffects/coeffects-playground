@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
@@ -268,7 +268,7 @@
       ### Simple type systems
 
       To understand effects and coeffects, let's look at how their type systems work.
-      In langauges like F#, the following holds:
+      In languages like F#, the following holds:
 
       $$$
       x:{\color{ltyp} \text{int}},~ y:{\color{ltyp} \text{int}} \vdash x+y : {\color{ltyp} \text{int}}
@@ -563,7 +563,7 @@
       <div class="ia-choice ia-ui-bar-right ia-ui-morelink" data-ia-undoable="true" data-ia-key="langs-impl-1"
         data-ia-ui-kind="light" data-ia-ui-prop="border-color" data-ia-show="langs-impl-1" data-ia-hide="">
 
-      Implicit parameters are the simplest example of coeffects. In our first langauge,
+      Implicit parameters are the simplest example of coeffects. In our first language,
       you can use `?foo` to access a value that has to be provided by the environment.
 
       </div>
@@ -693,7 +693,7 @@
 
       In dataflow languages, each expression denotes a _stream_ of values. The streams can be low-level
       like hardware signals or high-level such as mouse position in modern reactive programming. In our
-      langauge, you can use the `prev` keyword to access the previous value of a stream. Coeffects
+      language, you can use the `prev` keyword to access the previous value of a stream. Coeffects
       infer how many past values a function may access.
 
       </div>
@@ -793,7 +793,7 @@
     <div class="col-md-6 coeff-demo" data-coeff-mode="structural" data-coeff-kind="dataflow" id="df1">
       <div class="callout coeffect-playground" style="padding:30px;margin:0px 0px 30px 10px;">
         >>>>
-        Experiment with dataflow programming here! You can use the same core langauge
+        Experiment with dataflow programming here! You can use the same core language
         as earlier; `prev e` accesses the previous value of `e` and you can
         nest them and write `prev (prev e)`.
         <<<<
@@ -942,7 +942,7 @@
       Why languages need coeffects?
       -----------------------------
 
-      In the interactive playground above, you can write fun programs using a dataflow langauge
+      In the interactive playground above, you can write fun programs using a dataflow language
       with the `prev` keyword. But what do you get from using _coeffect_ system to track how
       many past values are needed? <span class="flspan" style="margin-top:50px">Most importantly,
       coeffects give you a unified way of _thinking_ about _context-requirements_.</span>
@@ -1371,8 +1371,8 @@
           onclick="$('#tps-input').val(samples[$('#tps-langchooser').val()])"><i class="fa fa-folder-open-o"></i>Open sample</button>
         <select class="form-control" id="tps-langchooser" style="width:71%; margin:0px 0px 0px 4%">
           <option value="flat-implicit">Implicit parameters (flat)</option>
-          <option value="flat-dataflow">Dataflow langauge (flat)</option>
-          <option value="structural-dataflow">Dataflow langauge (structural)</option>
+          <option value="flat-dataflow">Dataflow language (flat)</option>
+          <option value="structural-dataflow">Dataflow language (structural)</option>
         </select>
         <textarea class="form-control" id="tps-input" style="font-family:inconsolata;margin-top:5px;height:150px">
 let dyn snd = ?fst + snd in
@@ -1661,8 +1661,8 @@ dyn ?other</textarea>
             <div style="padding-top:5px">
             <select class="form-control" id="trsl-langchooser" style="width:92%; margin:0px 0px 0px 4%">
               <option value="flat-implicit">Implicit parameters (flat)</option>
-              <option value="flat-dataflow">Dataflow langauge (flat)</option>
-              <option value="structural-dataflow">Dataflow langauge (structural)</option>
+              <option value="flat-dataflow">Dataflow language (flat)</option>
+              <option value="structural-dataflow">Dataflow language (structural)</option>
             </select>
             <textarea class="form-control" id="trsl-input" style="font-family:inconsolata;margin-top:5px;height:150px">?param</textarea>
             </div>
