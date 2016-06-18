@@ -1,0 +1,233 @@
+@import url('http://fonts.googleapis.com/css?family=Inconsolata|Kreon:300,400,700|Jaldi');
+
+/************************** Standard slides formatting ********************************************/
+
+.reveal h1 {
+  font-family: 'Kreon', serif;
+  font-size:60pt;
+  margin-bottom:10px;
+}
+
+.reveal h2 {
+  font-family: 'Kreon', serif;
+  font-size:46pt;
+  margin-bottom:50px;
+}
+
+.reveal h3 {
+  font-family: 'Kreon', serif;
+  font-size:42pt;
+  margin-bottom:10px;
+}
+
+.reveal code {
+  color:#FF6B66;
+  font-size:32pt;
+}
+
+.reveal section img {
+  border-style:none;
+  background:transparent;
+}
+
+.reveal p, .reveal li {
+  font-size: 35pt;
+  line-height: 38pt;
+  margin:30px 0px 30px 0px;
+  font-family: Jaldi,sans-serif;
+}
+.reveal a {
+  color:#7FA5FF;
+  cursor: pointer;
+}
+.reveal a:hover {
+  color:#9Fc5FF;
+  cursor: pointer;
+}
+
+.reveal em {
+  color:#FFCA4F;
+  font-style: normal;
+}
+
+.reveal button {
+  font-size:18pt;
+  font-family:Jaldi,sans-serif;
+  border:1px solid #585858;
+  background-color:#383838;
+  padding:5px 20px 5px 20px;
+  border-radius:5px;
+  color:#f0f0f0;
+}
+
+.reveal button:focus, .reveal button:hover {
+  background:#505050 !important; color:white !important;
+  border-color:#808080;
+}
+
+.reveal textarea {
+  line-height:25pt;
+  color:white;
+  border:1px solid #404040;
+  border-collapse:separate;
+  background-color:#282828;
+  padding:10px;
+  font:24pt 'Inconsolata',consolas,monospace;
+  border-radius:5px;
+}
+
+.reveal .coeff-demo input {
+  color:white;
+  border:1px solid #404040;
+  background-color:#282828;
+  padding:2px 10px 2px 10px;
+  font:20pt 'Inconsolata',consolas,monospace;
+  border-radius:3px;
+}
+
+.reveal .coeffect-playground table td, .reveal .coeffect-playground table th {
+  border-style: none;
+  padding:0px 6px 0px 6px;
+}
+.coeffect-playground td.label {
+  text-align:right;
+  display:block;
+  padding-top:8px;
+}
+#impl1-playground table {
+  margin-right: 0px;
+  margin-left: auto;
+}
+
+/* Playground with live chart */
+.reveal .canvas-wrapper {
+  border:1px solid #606060;
+  border-radius:5px;
+  margin-top:10px;
+  background:black;
+  padding:0px 2px 0px 2px;
+}
+.drawing-space {
+  border:1px solid #606060;
+  border-radius:5px;
+  height:232px;
+  background:#282828;
+  position:relative;
+  width:49%;
+}
+#dfmouse-charts {
+  position:relative;
+  width:50%;
+  left:50%;
+  top:-242px;
+}
+.drawing-space span {
+  color:#383838;
+  font-size:12pt;
+  position:absolute;
+  right:10px;
+  bottom:10px;
+  text-align:right;
+  font-weight:bold;
+}
+.drawing-space span i {
+  float:left;
+  font-size:26pt;
+  margin-right:10px;
+  margin-top:5px;
+}
+
+pre a {
+  display:none;
+}
+
+#tps-mathjax p {
+  font-size: 20pt;
+}
+
+.coeff-demo select {
+  color:white;
+  border:1px solid #404040;
+  border-collapse:separate;
+  background-color:#282828;
+  padding: 5px 35px 5px 5px;
+  font-size: 20px;
+  padding:14px 20px 14px 20px;
+  border-radius:5px;
+}
+
+/************************** Source code formatting  ***********************************************/
+
+/* keywords */
+pre span.k { color:#7FA5FF; }
+/* identifier */
+pre span.i { color:#F0F0F0; }
+/* numbers */
+pre span.n { color:#4ECE58; }
+/* operators */
+pre span.op, pre span.o { color:#BEBADA; }
+/* comment */
+span.c { color:#4ECE58; }
+/* function */
+span.f { color:#F0F0F0; }
+/* inactive code */
+span.inactive { color:#a0a0a0; }
+/* preprocessor */
+span.prep { color:#F884FF; }
+
+.reveal pre {
+  line-height:22pt;
+  border:1px solid #404040;
+  border-collapse:separate;
+  margin:10px 20px 20px 40px;
+  background-color:#282828;
+  padding:10px;
+  border-radius:5px;
+}
+pre.fssnip code {
+  font:20pt 'Inconsolata',consolas,monospace;
+  color:#f0f0f0;
+}
+
+
+
+
+
+
+/* string */
+span.s { color:#a31515; }
+/* type or module */
+span.t { color:#2b91af; }
+/* DU case or active pattern */
+span.p { color:#800080; }
+/* mutable var or ref cell */
+span.v { color:#000000; font-weight: bold; }
+/* printf formatters */
+span.pf { color:#2b91af; }
+/* escaped chars */
+span.e { color:#ff0080; }
+/* fsi output */
+span.fsi { color:#808080; }
+
+/* tool tip */
+div.tip {
+	background:#e5e5e5;
+  border-radius:4px;
+  font:18pt 'Open Sans', arial, sans-serif;
+	padding:6px 8px 6px 8px;
+	display:none;
+  color:#000000;
+  z-index: 1000;
+  text-align: left;
+}
+table.pre {
+  width:100%;
+}
+
+/************************** Special things formatting  ********************************************/
+
+#rule110 td {
+  padding:0px;
+  border-style:none;
+  margin:0px;
+}

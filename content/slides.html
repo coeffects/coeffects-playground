@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>Coeffects: Context-aware programming languages</title>
+
+  <script src="//code.jquery.com/jquery-2.1.4.min.js"></script>
+  <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet">
+
+  <meta name="description" content="Slides that explains theory of coeffects and lets you type-check and run sample programs.">
+  <meta name="keywords" content="coeffects, comonads, programming languages, functional programming, theory">
+  <meta name="author" content="Tomas Petricek">
+
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:site" content="@tomaspetricek" />
+  <meta name="twitter:title" content="Coeffects: Context-aware programming languages" />
+  <meta name="twitter:description" content="Presentation that explains theory of coeffects and lets you type-check and run sample programs." />
+  <meta name="twitter:image" content="http://tomasp.net/coeffects/favicon-194x194.png" />
+
+  <link rel="shortcut icon" href="http://tomasp.net/coeffects/favicon.ico" />
+  <link rel="icon" type="image/png" href="http://tomasp.net/coeffects/favicon-32x32.png" sizes="32x32">
+  <link rel="icon" type="image/png" href="http://tomasp.net/coeffects/favicon-194x194.png" sizes="194x194">
+  <link rel="icon" type="image/png" href="http://tomasp.net/coeffects/favicon-96x96.png" sizes="96x96">
+
+  <script src="smoothie.js"></script>
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({ TeX: { extensions: ["color.js"] }});
+  </script>
+  <script src='//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
+
+  <link rel="stylesheet" href="reveal/css/reveal.css">
+  <link rel="stylesheet" href="reveal/css/night.css">
+  <link rel="stylesheet" href="slides.css" />
+
+  <script src="interactive.js" type="text/javascript"></script>
+  <script src="tips.js" type="text/javascript"></script>
+  <script type="text/javascript">
+    window.toolTipsStopFunc = function(t) { return t == "absolute"; }
+    window.toolTipsStopRelative = true;
+    window.toolTipsRoot = function(el) {
+      var res = el;
+      while(res.prop("tagName") != "SECTION") res = res.parent();
+      return res;
+    }
+  </script>
+  <script src="script.js" type="text/javascript"></script>
+</head>
+<body>
+<div style="display:none">
+  \[
+    \definecolor{leff}{RGB}{255,107,102}
+    \definecolor{lcoeff}{RGB}{78,206,88}
+    \definecolor{ltyp}{RGB}{127,165,255}
+    \definecolor{lkvd}{RGB}{255,202,79}
+
+    \definecolor{eff}{RGB}{177,35,43}
+    \definecolor{coeff}{RGB}{35,177,53}
+    \definecolor{typ}{RGB}{177,93,43}
+    \definecolor{expr}{RGB}{0,0,0}
+    \definecolor{kvd}{RGB}{0,45,177}
+    \definecolor{num}{RGB}{43,177,93}
+  \]
+</div>
+
+<div class="reveal">
+<div class="slides">
+<section>
+  >>>>
+  # _Coeffects_
+  ## Context-aware programming languages
+
+  <br /><br /><br /><br /><br /><br />
+
+  Tomas Petricek, University of Cambridge<br />
+  [tomas@tomasp.net](mailto:tomas@tomasp.net) | [@tomaspetricek](http://twitter.com/tomaspetricek)
+  <<<<
+</section>
+<section>
+    >>>>
+    <section>
+
+    # What are _coeffects_?
+
+    <br />
+    <div class="fragment">
+
+    Programming language abstraction for understanding how programs access the _context_ or _environment_ in which they execute
+
+    </div>
+
+    </section><section>
+
+        [hide]
+        type Cache() =
+          member x.Contains(key:string) = false
+          member x.Get(key:string) = ""
+          member x.Set(key:string, value:string) = ()
+
+        open System
+        let cache = new Cache()
+        let key = ""
+        let f () = ""
+
+    ## Conditional cross-platform compilation
+
+        // Read value from memory or disk
+        if cache.Contains(key) then
+          cache.Get(key)
+        #if LOCAL_FILE_SYSTEM
+        elif File.Exists(key) then
+          File.ReadAllText(key)
+        #endif
+
+    <span></span>
+
+        // Calculate and cache the value
+        else
+          let result = f()
+          cache.Set(key, result)
+        #if LOCAL_FILE_SYSTEM
+          File.WriteAllText(key, result)
+        #endif
+          result
+
+    </section><section>
+
+        [hide]
+        let input = [| 0 |]
+        let output = [| 0 |]
+        let cursor = 0
+
+    ## Neighborhood in stencil computations
+
+        let sum = input.[cursor-1] +
+          input.[cursor] + input.[cursor+1]
+
+        if sum = 2 || (sum = 1 &&
+            input.[cursor-1] = 0)
+          then output.[cursor] <- 1
+          else output.[cursor] <- 0
+
+    <div style="border:1px solid #404040;padding:5px;margin:10px 40px 5px 40px;background-color:#282828;">
+      <table id='rule110' style="overflow:hidden;"></table>
+    </div>
+    <div style="text-align:right;"><button id='rule110btn' data-light="transparent" data-dark="#C69B3D"
+      data-size="4" class="btn" style="padding:5px;width:170px;margin:0px 40px 5px 0px">Run</button></div>
+
+    </section>
+    <<<<
+</section>
+<section>
+    >>>>
+    <section>
+
+    # _Type system_ for coeffects
+
+    <br />
+    <div class="fragment">
+
+    _Effects_ – What your program<br />does to the world
+
+    _Coeffects_ – What your program<br />requires from the world
+
+    </div>
+    </section><section>
+
+    ## Simple _type systems_
+
+    <br />
+
+    $$$
+    x:{\color{ltyp} \text{int}},~ y:{\color{ltyp} \text{int}} \vdash x+y : {\color{ltyp} \text{int}}
+
+    <br />
+
+    </section><section>
+
+    ## Effect type systems
+
+    <br />
+
+    $$$
+    hello : {\color{ltyp} \text{string}} \vdash {\color{lkvd} \text{print}}~hello : {\color{ltyp} \text{unit}} {\scriptsize \;\&\;} {\color{leff} \{ \text{io} \} }
+
+    <br />
+
+    </section><section>
+
+    ## Coeffect type systems
+
+    <br />
+
+    $$$
+    deadline : {\color{ltyp} \text{time}} {\scriptsize \;@\;} {\color{lcoeff} \{ \text{clock} \} }
+      \vdash {\color{lkvd} \text{now}} \geq deadline : {\color{ltyp} \text{bool}}
+
+    <br />
+    </section>
+    <<<<
+</section>
+<section>
+    <section>
+    >>>>
+
+    # _Implicit parameters_
+
+    <br />
+
+    Implicit parameter `?foo` accesses a value<br />from the environment
+
+    <<<<
+    </section><section>
+
+    <h2>Implicit parameters</h2>
+    <p style="margin-bottom:60px">Support <a id="impl1-demo1">dynamic</a>, <a id="impl1-demo2">lexical</a> and <a id="impl1-demo3">mixed</a> scoping</p>
+
+    <div id="impl1" class="callout coeff-demo coeffect-playground"
+        data-coeff-mode="flat" data-coeff-kind="implicit">
+
+      <textarea style="box-sizing:border-box;width:100%;margin:0px;height:160px" id="impl1-input">?fst + ?snd</textarea>
+      <div style="text-align:left;margin-bottom:-50px">
+        <button class="btn btn-success" style="position:relative;top:10px;left:0px" id="impl1-btn"><i class="fa fa-check"></i>&nbsp;Check snippet</button>
+      </div>
+      <script>$(function() { $("#impl1-btn").trigger("click"); });</script>
+
+      <p id="impl1-error" style="margin-top:80px;text-align:left;clear:both;"></p>
+      <div id="impl1-no-error">
+        <div id="impl1-playground"></div>
+        <p id="impl1-playground-ui"></p>
+        <p id="impl1-judgement" style="font-size:30pt;margin-top:50px;" data-tex-color-prefix="l"></p>
+        <p id="impl1-judgement-temp" style="display:none"></p>
+        <p id="impl1-playground-no-ui">No implicit parameters are required.</p>
+      </div>
+
+      <script type="text/javascript">
+        function setupHandler(id, demo) {
+          $("#impl1-" + id).click(function(e) {
+            $('#impl1-input').val(demo);
+            $('#impl1-btn').trigger('click');
+            e.preventDefault();
+          });
+        }
+        var demo1 =
+          "let dyn =\n"+
+          "  (fun snd -> ?fst + snd) in\n"+
+          "let ?fst = 10 in\n"+
+          "dyn ?other";
+        var demo2 =
+          "let lex =\n"+
+          "  let ?fst = 10 in\n"+
+          "  (fun snd -> ?fst + snd) in\n"+
+          "lex ?other";
+        var demo3 =
+          "let both =\n"+
+          "  let ?fst = 100 in\n"+
+          "  (fun trd -> ?fst + ?snd + trd) in\n"+
+          "let ?fst = 200 in both 1";
+        setupHandler("demo1", demo1);
+        setupHandler("demo2", demo2);
+        setupHandler("demo3", demo3);
+      </script>
+    </div>
+
+    </section>
+</section>
+<section>
+    <section>
+    >>>>
+    # _Dataflow_ programming
+
+    <br />
+    <div class="fragment">
+
+    Each expression represents<br/> a _stream_ of values
+
+    Expression `prev x` accesses <br />previous value of the stream `x`
+
+    </div>
+    <<<<
+    </section><section>
+
+    <h2>Dataflow programming</h2>
+    <div class="callout coeff-demo coeffect-playground" style="padding:30px;margin:60px 0px 30px 10px;text-align:left;"
+        data-coeff-mode="structural" data-coeff-kind="dataflow" id="dfmouse">
+
+      <textarea style="box-sizing:border-box;width:100%;margin:0px;height:160px" id="dfmouse-input">fun x y -> x + y</textarea>
+      <button class="btn btn-success" style="position:relative;top:265px;" id="dfmouse-btn"><i class="fa fa-check"></i>&nbsp;Check snippet</button>
+      <script>$(function() { $("#dfmouse-btn").trigger("click"); });</script>
+
+      <p id="dfmouse-error" style="clear:both;margin-top:-30px"></p>
+      <div id="dfmouse-no-error" style="clear:both;margin-top:-50px">
+        <p id="dfmouse-livechart-no-ui">The expression is not a function
+          taking X and Y arguments, so we cannot use it for this demo.<br />Try writing for example
+          <code>fun x y -> x + y</code>.</p>
+        <div id="dfmouse-livechart-ui">
+          <div id="dfmouse-livechart" class="live-chart">
+            <div id="dfmouse-drawingspace" class="drawing-space">
+              <span><i class="fa fa-mouse-pointer"></i> Move mouse or touch <br /> here to get started!</span>
+            </div>
+            <div id="dfmouse-charts">
+              <div class="canvas-wrapper"><canvas height="100" id="chartIn"></canvas></div>
+              <div class="canvas-wrapper"><canvas height="100" id="chartOut"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="position:relative;top:-240px;left:250px">Load <a id="dfmouse-demo1">past x</a>, <a id="dfmouse-demo2">smoothing</a> or <a id="dfmouse-demo3">speed</a></p>
+    </div>
+    <script>dataflowPlayground("dfmouse", 440);</script>
+    <script type="text/javascript">
+      function setupHandler(id, demo) {
+        $("#dfmouse-" + id).click(function(e) {
+          $('#dfmouse-input').val(demo);
+          $('#dfmouse-btn').trigger('click');
+          e.preventDefault();
+        });
+      }
+      var demo1 =
+        "fun x y ->\n"+
+        "  let prev4 v = prev prev prev prev v in\n"+
+        "  prev4 (prev4 (prev4 x))";
+      var demo2 =
+        "fun x y ->\n"+
+        "  let s4 v = v + prev (v + prev (v + prev v)) in\n"+
+        "  let p4 v = prev prev prev prev v in\n"+
+        "  (s4 x + s4 (p4 x) + s4 (p4 (p4 x))) / 12";
+      var demo3 =
+        "fun x y ->\n"+
+        "  let dx = x - prev x in\n"+
+        "  let dy = y - prev y in\n"+
+        "  dx * dx + dy * dy";
+      setupHandler("demo1", demo1);
+      setupHandler("demo2", demo2);
+      setupHandler("demo3", demo3);
+    </script>
+    </section>
+    <section>
+    >>>>
+    ## Type-checking the _smoothing_ function
+
+        [lang=coeffects-struct-df]
+        let smooth x y =
+          let sum4 v = v + prev (v + prev (v + prev v)) in
+          let prev4 v = prev prev prev prev v in
+          let s1 = sum4 x + sum4 (prev4 x) in
+          let s2 = sum4 (prev4 (prev4 x)) in
+          (s1 + s2) / 12 in
+        smooth
+
+    $$$
+    smooth ~:~ {\color{ltyp} \text{num}} \xrightarrow{~\color{lcoeff} 11~} {\color{ltyp} \text{num}} \xrightarrow{~\color{lcoeff} 0~} {\color{ltyp} \text{num}}
+
+    <<<<
+    </section>
+</section>
+<section>
+    >>>>
+    <section>
+
+    # _Type system_ for coeffects
+
+    <br />
+    <div class="fragment">
+
+    Typing of lambda functions for _coeffects_<br /> differs from typing for _effects_
+
+    </div>
+    </section><section>
+
+    ## _Ordinary_ lambda abstraction
+
+    <br />
+
+    $$$
+    \dfrac
+      {\Gamma, x:{\color{ltyp} \tau_1} \vdash e : {\color{ltyp} \tau_2}}
+      {\Gamma \vdash {\color{lkvd} \text{fun}}~x \rightarrow e : {\color{ltyp} \tau_1} \rightarrow {\color{ltyp} \tau_2}}
+
+    <br />
+
+    </section><section>
+
+    ## _Effectful_ lambda abstraction
+
+    <br />
+
+    $$$
+    \dfrac
+      {\Gamma, x:{\color{ltyp} \tau_1} \vdash e : {\color{ltyp} \tau_2 } {\scriptsize \;\&\;} {\color{leff} r} }
+      {\Gamma \vdash {\color{lkvd} \text{fun}}~x \rightarrow e : {\color{ltyp} \tau_1} \xrightarrow{~\color{leff} r~} {\color{ltyp} \tau_2} {\scriptsize \;\&\;} {\color{leff} \emptyset}}
+
+    <br />
+
+    </section><section>
+
+    ## _Coeffectful_ lambda abstraction
+
+    <br />
+
+    $$$
+    \dfrac
+      {\Gamma, x:{\color{ltyp} \tau_1} {\scriptsize \;@\;} {\color{lcoeff} r\wedge s} \vdash e : {\color{ltyp} \tau_2 } }
+      {\Gamma {\scriptsize \;@\;} {\color{lcoeff} r} \vdash {\color{lkvd} \text{fun}}~x \rightarrow e : {\color{ltyp} \tau_1} \xrightarrow{~\color{lcoeff} s~} {\color{ltyp} \tau_2}}
+
+    <br />
+    </section>
+    <<<<
+    <section>
+      <div class="coeff-demo" id="tps">
+        <h2>Interactive <em>coeffect type checker</em></h2>
+        <div style="padding-top:5px">
+        <script>
+          var samples =
+            { 'flat-implicit': "let dyn snd = ?fst + snd in\nlet ?fst = 10 in\ndyn ?other",
+              'flat-dataflow': "fun x y ->\n  let avg2 = fun y -> (y + prev y) / 2 in\n  avg2 x + prev (avg2 y)",
+              'structural-dataflow': "fun x y ->\n  let avg2 = fun y -> (y + prev y) / 2 in\n  avg2 x + prev (avg2 y)" };
+        </script>
+        <textarea style="box-sizing:border-box;width:100%;margin:0px;height:130px" id="tps-input">
+let dyn snd = ?fst + snd in
+let ?fst = 10 in
+dyn ?other</textarea>
+        </div>
+        <select class="form-control" id="tps-langchooser" style="width:470px">
+          <option value="flat-implicit">Implicit parameters (flat)</option>
+          <option value="flat-dataflow">Dataflow language (flat)</option>
+          <option value="structural-dataflow">Dataflow language (structural)</option>
+        </select>
+        <button class="btn btn-success" style="width:235px" onclick="$('#tps-input').val(samples[$('#tps-langchooser').val()])"><i class="fa fa-plus-square"></i>&nbsp;Open sample</button>
+        <button class="btn btn-success" style="width:235px" id="tps-btn"><i class="fa fa-check"></i>Check snippet</button>
+        <script>$(function() { $("#tps-btn").trigger("click"); });</script>
+
+        <div style="margin:60px -3000px 0px -3000px;clear:both" id="tps-mathjax">
+          <p id="tps-typetree" data-current-color="#2B323A" data-navigation-color="#3D2A3F" data-tex-color-prefix="l"></p>
+          <p id="tps-typetree-temp" style="display:none"></p>
+        </div>
+        <br /><br /><br />
+      </div>
+    </section>
+</section>
+</div>
+</div>
+
+<script src="reveal/lib/js/head.min.js"></script>
+<script src="reveal/js/reveal.js"></script>
+
+<script>
+  Reveal.initialize({
+    help: false,
+    history: true,
+    transition: "none",
+    dependencies: [ ]
+  });
+</script>
+
+
+<script>$(function() { logStarted = true; logEvent("page", "loaded", window.navigator.userAgent); });</script>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-1561220-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function () {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+</body>
+</html>

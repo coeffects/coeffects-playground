@@ -1,5 +1,8 @@
 var currentTip = null;
 var currentTipElement = null;
+window.toolTipsStopRelative = false;
+window.toolTipsStopFunc = function(t) { return t == "absolute" || t == "relative"; }
+window.toolTipsRoot = function(el) { return document.body; }
 
 function hideTip(evt, name, unique) {
     var el = document.getElementById(name);
@@ -12,7 +15,7 @@ function findPos(obj, stopRelative) {
     var curtop = obj.offsetHeight;
     while (obj) {
         var pos = $(obj).css("position");
-        if (stopRelative && (pos == "relative" || pos == "absolute")) break;
+        if (stopRelative && window.toolTipsStopFunc(pos)) break;
         curleft += obj.offsetLeft;
         curtop += obj.offsetTop;
         obj = obj.offsetParent;
@@ -35,7 +38,7 @@ function showTip(evt, name, unique, owner, stopRelative) {
     var pos = findPos(owner ? owner : (evt.srcElement ? evt.srcElement : evt.target), stopRelative);
     var posx = pos[0];
     var posy = pos[1];
-    
+
     var el = document.getElementById(name);
     var parent = (document.documentElement == null) ? document.body : document.documentElement;
     el.style.position = "absolute";
@@ -47,12 +50,12 @@ function showTip(evt, name, unique, owner, stopRelative) {
 var tipIndex = 0;
 
 function setupTooltips() {
-  $("pre span[title]").each(function() { 
+  $("pre span[title]").each(function() {
     var idx = tipIndex++;
     var tip = "val " + $(this).text() + " : " + $(this).attr("title");
-    $("<div class='tip' id='dyat" + idx + "'>" + tip + "</div>").appendTo($(document.body));
+    $("<div class='tip' id='dyat" + idx + "'>" + tip + "</div>").appendTo($(window.toolTipsRoot($(this))));
     $(this)
-      .on("mouseenter", function() { showTip(event, "dyat" + idx, idx, null, false); })
+      .on("mouseenter", function() { showTip(event, "dyat" + idx, idx, null, window.toolTipsStopRelative); })
       .on("mouseleave", function() { hideTip(event, "dyat" + idx, idx); })
       .attr("title", null);
   });
