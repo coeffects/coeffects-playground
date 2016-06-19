@@ -1566,7 +1566,7 @@ dyn ?other</textarea>
         let counit (IP(v, _)) = v
         let cobind f (IP(v, p)) =
           let p1, p2 = p, p
-          (f (IP(v, p1)), p2)
+          IP(f (IP(v, p1)), p2)
 
     The `merge` operation combines the two lookup functions it gets and `split`
     creates two copies. We also need a special `lookup` function to get the value
@@ -1591,10 +1591,11 @@ dyn ?other</textarea>
     is done by applying `f` to all the _suffixes_:
 
         let counit (DF(v::_)) = v
-        let rec cobind f (DF vs) =
-          match vs with
-          | [] -> []
-          | x::xs -> (f (DF vs)) :: cobind f (DF xs)
+        let rec cobind f = function
+          | DF [] -> DF []
+          | DF (x::xs) ->
+              let (DF tl) = cobind f (DF xs)
+              DF(f (DF xs) :: tl)
 
     `cobind f [1;2;3]` produces `[f [1;2;3]; f [2;3]; f [3]]`. The `merge`
     operation is `zip` and `split` simply duplicates the list.
@@ -1674,11 +1675,6 @@ dyn ?other</textarea>
 
             <pre id="trsl-longoutput" style="margin:20px 4% 0px 4%"></pre>
             <pre id="trsl-transl" style="margin:20px 4% 0px 4%"></pre>
-
-            <p style="clear:both;padding-top:30px;margin:0px 0px 25px 0px">Now explore the typing derivation.
-              Click on the judgements in the assumptions to navigate through the typing derivation.
-              Compare flat and structural dataflow typing for the same program!</p>
-
           </div>
         </div>
     </div>

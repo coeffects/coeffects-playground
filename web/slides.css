@@ -30,10 +30,19 @@
   background:transparent;
 }
 
-.reveal p, .reveal li {
+.reveal p {
   font-size: 35pt;
   line-height: 38pt;
   margin:30px 0px 30px 0px;
+  font-family: Jaldi,sans-serif;
+}
+.reveal .narrow-p p {
+  margin:0px 0px 0px 0px;
+}
+.reveal li {
+  font-size: 35pt;
+  line-height: 38pt;
+  margin:5px 0px 5px 0px;
   font-family: Jaldi,sans-serif;
 }
 .reveal a {
@@ -48,6 +57,12 @@
 .reveal em {
   color:#FFCA4F;
   font-style: normal;
+}
+
+.reveal strong {
+  color:#4ECE58;
+  font-style: normal;
+  font-weight: normal;
 }
 
 .reveal button {
@@ -72,7 +87,7 @@
   border-collapse:separate;
   background-color:#282828;
   padding:10px;
-  font:24pt 'Inconsolata',consolas,monospace;
+  font:20pt 'Inconsolata',consolas,monospace;
   border-radius:5px;
 }
 
@@ -156,6 +171,24 @@ pre a {
   border-radius:5px;
 }
 
+/* Stencil computation grid */
+.reveal .grid .cur {
+  background:#C69B3D;
+}
+.reveal .grid .nb {
+  background:#6B5232;
+}
+.reveal .grid td, .reveal .grid tr
+{
+  background:#282828;
+  border:solid 1px #606060;
+}
+.grid td
+{
+  width:50px;
+  text-align:center !important;
+}
+
 /************************** Source code formatting  ***********************************************/
 
 /* keywords */
@@ -174,6 +207,10 @@ span.f { color:#F0F0F0; }
 span.inactive { color:#a0a0a0; }
 /* preprocessor */
 span.prep { color:#F884FF; }
+/* type or module */
+span.t { color:#54C6E5; }
+/* DU case or active pattern */
+span.p { color:#E585E5; }
 
 .reveal pre {
   line-height:22pt;
@@ -184,7 +221,15 @@ span.prep { color:#F884FF; }
   padding:10px;
   border-radius:5px;
 }
-pre.fssnip code {
+.reveal .pre-edit td {
+  padding: 0px;
+}
+.reveal .pre-edit pre {
+  margin:0px 0px 8px 0px;
+  width:940px;
+  height:100px;
+}
+.reveal pre.fssnip code, .reveal pre {
   font:20pt 'Inconsolata',consolas,monospace;
   color:#f0f0f0;
 }
@@ -196,10 +241,6 @@ pre.fssnip code {
 
 /* string */
 span.s { color:#a31515; }
-/* type or module */
-span.t { color:#2b91af; }
-/* DU case or active pattern */
-span.p { color:#800080; }
 /* mutable var or ref cell */
 span.v { color:#000000; font-weight: bold; }
 /* printf formatters */
@@ -211,6 +252,7 @@ span.fsi { color:#808080; }
 
 /* tool tip */
 div.tip {
+  pointer-events:none;
 	background:#e5e5e5;
   border-radius:4px;
   font:18pt 'Open Sans', arial, sans-serif;

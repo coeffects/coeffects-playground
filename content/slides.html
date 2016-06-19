@@ -277,8 +277,63 @@
     Expression `prev x` accesses <br />previous value of the stream `x`
 
     </div>
+    </section>
+    <section>
+    <div class="coeff-demo" data-coeff-editor="df1fl" data-coeff-mode="flat" data-coeff-kind="dataflow" id="df1fl">
+
+    ## _Flat_ dataflow coeffects
+
+    Keep one _coeffect annotation_ for the whole context
+
+    <br />
+    <div class="pre-edit" id="switch1">
+
+        [lang=coeffects-flat-df-autoload]
+        let flat x y = x + prev y in
+        flat
+
+    <textarea id="df1fl-input" style="box-sizing:border-box;padding:15px;width:100%;margin:0px;height:120px;display:none;">let flat x y = x + prev y in
+    flat</textarea>
+    <div style="text-align:right">
+      <button id="df1fl-btn" style="display:none;"><i class="fa fa-check-square-o"></i>Check snippet</button>
+      <button onclick="$('#switch1 pre, #switch1 textarea, #df1fl-btn').toggle()"><i class="fa fa-pencil-square-o"></i> Edit snippet</button>
+    </div>
+    </div>
+    <div style="margin-top:50px">
+      <p id="df1fl-judgement" style="font-size:30pt;margin-right:40px" data-tex-color-prefix="l"></p>
+      <p id="df1fl-judgement-temp" style="display:none"></p>
+    </div>
+    </div>
+    </section>
+    <section>
+    <div class="coeff-demo" data-coeff-editor="df1st" data-coeff-mode="structural" data-coeff-kind="dataflow" id="df1st">
+
+    ## _Structural_ dataflow coeffects
+
+    Keep one _coeffect annotation_ for each variable
+
+    <br />
+    <div class="pre-edit" id="switch1">
+
+        [lang=coeffects-structural-df-autoload]
+        let struct x y = x + prev y in
+        struct
+
+    <textarea id="df1st-input" style="box-sizing:border-box;padding:15px;width:100%;margin:0px;height:120px;display:none;">let flat x y = x + prev y in
+    flat</textarea>
+    <div style="text-align:right">
+      <button id="df1st-btn" style="display:none;"><i class="fa fa-check-square-o"></i>Check snippet</button>
+      <button onclick="$('#switch1 pre, #switch1 textarea, #df1st-btn').toggle()"><i class="fa fa-pencil-square-o"></i> Edit snippet</button>
+    </div>
+    </div>
+    <div style="margin-top:50px">
+      <p id="df1st-judgement" style="font-size:30pt;margin-right:40px" data-tex-color-prefix="l"></p>
+      <p id="df1st-judgement-temp" style="display:none"></p>
+    </div>
+    </div>
     <<<<
-    </section><section>
+    </section>
+    <section>
 
     <h2>Dataflow programming</h2>
     <div class="callout coeff-demo coeffect-playground" style="padding:30px;margin:60px 0px 30px 10px;text-align:left;"
@@ -437,6 +492,239 @@ dyn ?other</textarea>
         <br /><br /><br />
       </div>
     </section>
+</section>
+<section>
+    >>>>
+    <section>
+
+    # Context and _comonads_
+
+    <br /><div class="fragment">
+
+    Comonads are dual to monads!
+
+    Comonads represent _value with context_
+
+    </div>
+    </section>
+    <section>
+
+    ## Operations of an _indexed comonad_
+
+    ${\color{lkvd} C}^{\color{lcoeff}r} {\color{ltyp} \tau}$ represents a value ${\color{ltyp} \tau}$ with context ${\color{lcoeff}r}$
+
+    <div class="fragment" style="margin-top:80px">
+
+    $$$
+    \begin{array}{rcl}
+    {\color{lkvd} \text{counit}} &:&  C^{\color{lcoeff}\sf\text{use}} {\color{ltyp} \tau} \rightarrow  {\color{ltyp} \tau} \\
+    {\color{lkvd} \text{cobind}} &:&  (C^{\color{lcoeff}r} {\color{ltyp} \tau_1} \rightarrow {\color{ltyp} \tau_2})
+      \rightarrow  C^{\color{lcoeff}{r \circledast s}} {\color{ltyp} \tau_1} \rightarrow  C^{\color{lcoeff}{s}}{\color{ltyp} \tau_2}
+    \end{array}
+
+    </div>
+    </section>
+    <section>
+
+    ## Comonads for _stencil computations_
+
+    <div style="width:550px;margin:0px auto 0px auto;">
+      <table class="grid" id="grin" style="float:left;margin-left:15px">
+      <tr><td>0.0</td><td>1.0</td><td>1.0</td></tr>
+      <tr><td>0.0</td><td>2.0</td><td>2.0</td></tr>
+      <tr><td>2.0</td><td>3.0</td><td>4.0</td></tr>
+      </table>
+      <table class="grid" id="grout" style="margin-left:290px">
+      <tr><td>?</td><td>?</td><td>?</td></tr>
+      <tr><td>?</td><td>?</td><td>?</td></tr>
+      <tr><td>?</td><td>?</td><td>?</td></tr>
+      </table>
+      <button class="btn form-control" style="width:250px;float:right;margin-top:10px;margin-right:15px" id="btn-comonad-demo">Compute averages!</button>
+      <div style="clear:both"></div>
+    </div>
+    <div style="margin:20px 0px 0px 50px" class="fragment">
+
+     - ${\color{lcoeff} C\tau}$ is a 2D grid with _current position_
+     - **counit** returns value at the _current position_
+     - **cobind** calls $f$ on all possible _positions_
+
+    </div>
+    </section>
+    <section>
+
+    ## Dataflow / non-empty list comonad
+
+    Data _type_ with comonad _operations_
+
+        type DF<'a> = DF of list<'a>
+
+    <span></span>
+
+        let counit (DF(v::_)) = v
+        let rec cobind f = function
+          | DF [] -> DF []
+          | DF (x::xs) ->
+              let (DF tl) = cobind f (DF xs)
+              DF(f (DF xs) :: tl)
+
+    <div class="fragment">
+
+    Operations for _context_ manipulation
+
+        let prev (DF(_::vs)) = DF(vs)
+
+    </div>
+    </section>
+    <section>
+
+    ## Implicit parameters / product comonad
+
+    Data _type_ with comonad _operations_
+
+        type IP<'a> = IP of 'a * (string -> obj)
+
+    <span></span>
+
+        let counit (IP(v, _)) = v
+        let cobind f (IP(v, p)) =
+          let p1, p2 = p, p
+          IP(f (IP(v, p1)), p2)
+
+    <div class="fragment">
+
+    Operations for _context_ manipulation
+
+        let lookup name (IP(_, f)) = f name
+
+    </div>
+    </section>
+    <section>
+
+    ## _Merging and splitting_ of context
+
+    Comonad provides only _sequential composition_
+
+    <br />
+    <div class="fragment">
+
+    $$$
+    \begin{array}{rcl}
+    \text{merge} &:&  C^{\color{lcoeff}r} {\color{ltyp} \tau_1} \times  C^{\color{lcoeff}s} {\color{ltyp} \tau_2}
+      \rightarrow  C^{\color{lcoeff}{r \wedge s}} ({\color{ltyp}\tau_1} \times {\color{ltyp}\tau_2}) \\
+    \text{split} &:&  C^{\color{lcoeff}{r \oplus s}} ({\color{ltyp} \tau_1} \times {\color{ltyp}\tau_2})
+      \rightarrow  C^{\color{lcoeff}r} {\color{ltyp} \tau_1} \times  C^{\color{lcoeff}s} {\color{ltyp} \tau_2} \\
+    \end{array}
+
+    </div>
+    </section>
+    <<<<
+</section>
+<section>
+    >>>>
+    <section>
+
+    # _Comonadic_ translation
+
+    <br /><div class="fragment">
+
+    Give _semantics_ to context-aware programs
+
+    Similar to Haskell's _do notation_
+
+    </div>
+    </section>
+    <<<<
+    <section>
+    <h2>Translating <em>implicit parameter</em> programs</h2>
+    <div>
+      <div class="coeff-demo" id="trsl1" data-coeff-mode="flat" data-coeff-kind="implicit">
+        <textarea  style="box-sizing:border-box;width:100%;margin:0px;height:130px" id="trsl1-input">?param</textarea>
+        <button class="btn btn-success" style="width:220px;float:right" id="trsl1-btn"><i class="fa fa-check"></i>Check snippet</button>
+        <p style="text-align:left;font-size:30pt;margin:0px;">Load <a id="trsl1-demo1">addition</a>, <a id="trsl1-demo2">functions</a> or <a id="trsl1-demo3">scoping</a> demo</p>
+        <script>$(function() { $("#trsl1-btn").trigger("click"); });</script>
+        <pre id="trsl1-transl" style="width:100%;margin:20px 0% 0px 0%"></pre>
+        <br /><br /><br /><br />
+      </div>
+    </div>
+    <script type="text/javascript">
+      function setupHandler(id, demo) {
+        $("#trsl1-" + id).click(function(e) {
+          $('#trsl1-input').val(demo);
+          $('#trsl1-btn').trigger('click');
+          e.preventDefault();
+        });
+      }
+      var demo1 = "?one + ?two";
+      var demo2 = "fun x -> x + ?param";
+      var demo3 = "let ?param = 10 in\nfun x -> ?param + ?other";
+      setupHandler("demo1", demo1);
+      setupHandler("demo2", demo2);
+      setupHandler("demo3", demo3);
+    </script>
+    </section>
+    <section>
+    <h2>Translating <em>dataflow</em> programs</h2>
+    <div>
+      <div class="coeff-demo" id="trsl2" data-coeff-mode="flat" data-coeff-kind="implicit">
+        <textarea  style="box-sizing:border-box;width:100%;margin:0px;height:130px" id="trsl2-input">fun x -> prev x</textarea>
+        <select class="form-control" id="trsl2-langchooser" style="width:650px">
+          <option value="flat-dataflow">Per-context tracking</option>
+          <option value="structural-dataflow">Per-variable tracking</option>
+        </select>
+        <button class="btn btn-success" style="width:300px" id="trsl2-btn"><i class="fa fa-check"></i>Check snippet</button>
+        <p style="text-align:left;font-size:30pt;margin:10px 0px 0px 0px;">Load <a id="trsl2-demo1">two last values</a>, <a id="trsl2-demo2">curried function</a> or <a id="trsl2-demo3">nested function</a> demo</p>
+        <script>$(function() { $("#trsl2-btn").trigger("click"); });</script>
+        <pre id="trsl2-transl" style="width:100%;margin:20px 0% 0px 0%"></pre>
+        <br /><br /><br /><br />
+      </div>
+    </div>
+    <script type="text/javascript">
+      function setupHandler(id, demo) {
+        $("#trsl2-" + id).click(function(e) {
+          $('#trsl2-input').val(demo);
+          $('#trsl2-btn').trigger('click');
+          e.preventDefault();
+        });
+      }
+      var demo1 = "fun x -> x + prev x";
+      var demo2 = "fun x y -> x + prev y";
+      var demo3 = "fun x -> (fun v -> prev v) prev x";
+      setupHandler("demo1", demo1);
+      setupHandler("demo2", demo2);
+      setupHandler("demo3", demo3);
+    </script>
+    </section>
+</section>
+<section>
+>>>>
+## Summary
+
+_Context_ or execution _environment_ matters!
+
+Captured by _coeffects_ with _comonadic_ semantics
+
+Useful for _readability_, _efficiency_ and _safety_
+
+<br /><br />
+
+<div style="width:48%; text-align:right;float:left;">
+
+Drop me an email<br />
+Ping me on twitter<br />
+Interactive essay<br />
+Detailed papers
+
+</div>
+<div style="width:50%; text-align:left;margin-left:50%;">
+
+| [tomas@tomasp.net](mailto:tomas@tomasp.net)<br />
+| [@tomaspetricek](http://twitter.com/tomaspetricek) <br />
+| [tomasp.net/coeffects](http://tomasp.net/coeffects)<br />
+| [tomasp.net/academic](http://tomasp.net/academic)
+
+</div>
+
+<<<<
 </section>
 </div>
 </div>
