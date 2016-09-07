@@ -116,7 +116,7 @@ let setupPlayground prefix kind mode (Typed(tyinfo, typed)) transle =
   playground.innerHTML <- "";
   match kind, tyinfo with
   | CoeffectKind.PastValues, (_, _, f) ->
-      // Create groups of inputs for each varaible of the input function
+      // Create groups of inputs for each variable of the input function
       // First, we try to guess the variable names
       Trace.event "play" "setup-past-values" prefix
       let inputs = match f with Type.Funcs(inputs, _) -> inputs | _ -> []
