@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------------------------------
-// Parser for a mini-ML langauge - turns list<Token> into Expr
+// Parser for a mini-ML language - turns list<Token> into Expr
 // ------------------------------------------------------------------------------------------------
 
 [<ReflectedDefinition>]
