@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------------------------------
-// Lexer for a mini-ML langauge - turns list<char> into list<Token>
+// Lexer for a mini-ML language - turns list<char> into list<Token>
 // ------------------------------------------------------------------------------------------------
 
 [<ReflectedDefinition>]

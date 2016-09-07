@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------------------------------
-// Coeffect translation that translates source language to a target langauge with comonads
+// Coeffect translation that translates source language to a target language with comonads
 // ------------------------------------------------------------------------------------------------
 
 [<ReflectedDefinition>]

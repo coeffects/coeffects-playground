@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------------------------------
-// Type checker for a mini-ML langauge - returns typed expression with generated constraints
+// Type checker for a mini-ML language - returns typed expression with generated constraints
 // ------------------------------------------------------------------------------------------------
 
 [<ReflectedDefinition>]
@@ -254,7 +254,7 @@ let rec check ctx (Typed((), e)) : Typed<CoeffVars * Coeffect * Type> * ResultCo
         | TypedPat((), Pattern.Var v) -> Structural.remove v (cvars body)
         | _ -> 
           if (ctx.CoeffectMode &&& CoeffectMode.Structural) = CoeffectMode.Structural then 
-            Errors.syntaxError "Structural coeffect langauge only supports simple variable patterns."
+            Errors.syntaxError "Structural coeffect language only supports simple variable patterns."
           else Coeffect.None, Structural.ofVars Coeffect.None ctx.Variables
 
       // Annotate the function type with both flat & structural coeffect
@@ -300,7 +300,7 @@ let rec check ctx (Typed((), e)) : Typed<CoeffVars * Coeffect * Type> * ResultCo
               (cvars earg |> Structural.mapCoeff (fun c -> Coeffect.Seq(c, carg)))
         | _ ->
           if (ctx.CoeffectMode &&& CoeffectMode.Structural) = CoeffectMode.Structural then 
-            Errors.syntaxError "Structural coeffect langauge only supports simple variable patterns."
+            Errors.syntaxError "Structural coeffect language only supports simple variable patterns."
           else Structural.ofVars Coeffect.None ctx.Variables
 
       typed cstruct cflat (typ ebody) (Expr.Let(typedPat, earg, ebody)) res

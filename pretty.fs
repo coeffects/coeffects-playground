@@ -213,7 +213,7 @@ module Html =
         let c = 
           if cf = Coeffect.None then cs 
           elif cs = Coeffect.None then cf
-          else Errors.unexpected "Pretty printer cannot format coeffect langauge expression with mixed flat and structural coeffects."
+          else Errors.unexpected "Pretty printer cannot format coeffect language expression with mixed flat and structural coeffects."
         match flattenCoeffects kind c with
         | PrimitiveCoeffect.PastValues 0 
         | PrimitiveCoeffect.ResourceSet [] ->
@@ -418,7 +418,7 @@ module MathJax =
         let c = 
           if cf = Coeffect.None then cs 
           elif cs = Coeffect.None then cf
-          else Errors.unexpected "Pretty printer cannot format coeffect langauge expression with mixed flat and structural coeffects."
+          else Errors.unexpected "Pretty printer cannot format coeffect language expression with mixed flat and structural coeffects."
         ar |> typ kind colored t1 |> inl "\\xrightarrow{" |> coeff kind true c 
            |> inl "}" |> typ kind colored t2 |> ignore
     | Type.Primitive(s) -> ar |> inl ("\\text{" + s + "}") |> ignore
