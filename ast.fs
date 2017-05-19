@@ -5,7 +5,7 @@
 [<ReflectedDefinition>]
 module Coeffects.Ast
 
-/// Represents tokens of the coeffect langauge 
+/// Represents tokens of the coeffect language 
 [<RequireQualifiedAccess>]
 type Token = 
   | RParen
@@ -55,7 +55,7 @@ and [<RequireQualifiedAccess>] Type =
   | Primitive of string
   | Func of (Coeffect * Coeffect) * Type * Type
   | Tuple of list<Type>
-  // Translation target langauge-only
+  // Translation target language-only
   | FlatComonad of Coeffect * Type
   | StructuralComonad of Coeffect list * Type
 
